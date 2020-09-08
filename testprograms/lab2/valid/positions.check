@@ -1,0 +1,8 @@
+ID(identifier)(1:1)
+ID(more)(2:5)
+ID(and)(2:10)
+INT(2)(2:14)
+ID(more)(2:16)
+ID(identifiers)(3:7)
+ID(again)(4:10)
+EOF()
