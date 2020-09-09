@@ -1,42 +1,22 @@
 package punkt0
 
 import java.io.File
-
 import lexer._
 
 object Main {
 
-  def processOptions(args: Array[String]): Context = {
-    var ctx = Context()
-
-    def processOption(args: List[String]): Unit = args match {
+  def processOptions(args: List[String], ctx: Context = Context()): Context = {
+    args match {
       case "--help" :: args =>
-        ctx = ctx.copy(doHelp = true)
-        processOption(args)
-
-      case "-d" :: out :: args =>
-        ctx = ctx.copy(outDir = Some(new File(out)))
-        processOption(args)
-
+        processOptions(args, ctx.copy(doHelp = true))
       case "--tokens" :: args =>
-        ctx = ctx.copy(doTokens = true)
-        processOption(args)
-
+        processOptions(args, ctx.copy(doTokens = true))
+      case "-d" :: out :: args =>
+        processOptions(args, ctx.copy(outDir = Some(new File(out))))
       case f :: args =>
-        ctx = ctx.copy(file = Some(new File(f)))
-        processOption(args)
-
-      case List() =>
+        processOptions(args, ctx.copy(file = Some(new File(f))))
+      case List() => ctx
     }
-
-    processOption(args.toList)
-
-    if (ctx.doHelp) {
-      displayHelp()
-      sys.exit(0)
-    }
-
-    ctx
   }
 
   def displayHelp(): Unit = {
@@ -48,11 +28,15 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    val ctx = processOptions(args)
+    val ctx = processOptions(args.toList)
+
+    if (ctx.doHelp) return displayHelp()
+
     if (ctx.file.isEmpty) {
       println("Please provide a file!")
       sys.exit(1)
     }
+
     val f = ctx.file.get
     var tokens = Lexer.run(f)(ctx)
     if (ctx.doTokens) {
