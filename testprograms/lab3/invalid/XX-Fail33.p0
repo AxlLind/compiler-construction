@@ -1,0 +1,9 @@
+class A {
+    def foo() : retType = {
+        // there should be no unary minus!
+        z = -z;
+        12
+    }
+}
+
+object Main extends App { println("42") }

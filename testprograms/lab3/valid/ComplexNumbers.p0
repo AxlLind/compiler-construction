@@ -1,0 +1,42 @@
+class ComplexNumber {
+  var re : Int = 0; /* Real part */
+  var im : Int = 0; /* Imaginary part */
+
+  def init (re_ : Int, im_ : Int) : ComplexNumber = {
+    re = re_;
+    im = im_;
+
+    this
+  }
+
+  def inverse () : ComplexNumber = {
+    new ComplexNumber().init(0 - re, 0 - im)
+  }
+
+  def add (b: ComplexNumber) : ComplexNumber = {
+    new ComplexNumber().init(re + b.real(), im + b.imaginary())
+  }
+
+  def multiply (b: ComplexNumber) : ComplexNumber = {
+    new ComplexNumber().init(re * b.real() - im * b.imaginary(), im * b.real() + re * b.imaginary())
+  }
+
+  def real () : Int = {
+    re
+  }
+
+  def imaginary () : Int = {
+    im
+  }
+
+  def print () : String = {
+    println(re);
+    println(im);
+    
+    ""
+  }
+}
+
+object Main extends App {
+  println(new ComplexNumber().init(3, 5).multiply(new ComplexNumber().init(4, 6)).inverse().print())
+}

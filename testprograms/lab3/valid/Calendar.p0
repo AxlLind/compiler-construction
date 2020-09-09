@@ -1,0 +1,107 @@
+class CalendarImpl {
+
+    var month_ : Int = 0;
+    var year_ : Int = 0;
+
+    def init(month : Int, year : Int) : CalendarImpl = {
+        month_ = month;
+        year_ = year;
+        this
+    }
+
+    def isLeap(year : Int) : Boolean = {
+        if (this.mod(year, 100) == 0) this.mod(year, 400) == 0
+        else this.mod(year, 4) == 0
+    }
+    
+
+    def daysInMonth(month : Int, year : Int) : Int = {
+        var result : Int = 0;
+
+        if (month == 1 || month == 3 || month == 5 || month == 7 ||
+            month == 8 || month == 10 || month == 12) result = 31
+        else result = 30;
+        if (month == 2) {
+            if (this.isLeap(year)) result = 29
+            else result = 28
+        };
+        result
+    }
+
+    /* monday = 0, tuesday = 1, ... */
+    def firstJan(year : Int) : Int = {
+        var result : Int = 0;
+        var pyear : Int = 0;
+
+        pyear = year - 1;
+        result = 365 * pyear + pyear / 4 - pyear / 100 + pyear / 400;
+        result = this.mod(result, 7);
+        result
+    }
+
+    def firstDay(month : Int, year : Int) : Int = {
+        var result : Int = 0;
+        var i : Int = 0;
+
+        result = this.firstJan(year);
+        i = 1;
+        while (i < month) {
+            result = result + this.daysInMonth(i, year);
+            i = i + 1
+        };
+        result = this.mod(result, 7);
+        result
+    }
+
+
+    def display() : String = {
+        var days : Int = 0;
+        var firstDay : Int = 0;
+        var count : Int = 0;
+
+        days = this.daysInMonth(month_, year_);
+        firstDay = this.firstDay(month_, year_);
+        
+        println("Mo Tu We Th Fr Sa Su");
+        println(this.displayWeek(1, 7 - firstDay));
+        count = 7 - firstDay;
+        while (count < days) {
+            if (days < count + 7) println(this.displayWeek(count + 1, days))
+            else println(this.displayWeek(count + 1, count + 7));
+            count = count + 7
+        };
+        ""
+    }
+
+    def displayWeek(first : Int, last : Int) : String = {
+        var current : Int = 0;
+        var counter : Int = 0;
+        var result : String = null;
+
+        current = first;
+        counter = 0;
+        result = "";
+        while (counter < 7) {
+            if (last + counter < 7 || last < current) {
+                result = result + "   "
+            } else {
+                if (current < 10) result = result + " " + current + " "
+                else result = result + current + " ";
+                current = current + 1
+            };
+            counter = counter + 1
+        };
+        result
+    }
+
+    def mod(i : Int, j : Int) : Int = { i - (i / j * j) }
+}
+
+object Main extends App {
+    println("~~~ October 2011 ~~~");
+    println(new CalendarImpl().init(10, 2011).display());
+    println("~~ September 1988 ~~");
+    println(new CalendarImpl().init(9, 1988).display());
+    println("~~ February 2000 ~~~");
+    println(new CalendarImpl().init(2, 2000).display())
+}

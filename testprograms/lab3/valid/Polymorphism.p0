@@ -1,0 +1,289 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+class PolymorphismTest {
+  def run(): String = {
+    var shape : Shape = null;
+    var unit : Int = 0;
+    
+    shape = new Shape().init("blue");
+    unit = this.displayShape(shape);
+    
+    shape = new Rectangle().initRectangle("red", 2, 4);
+    unit = this.displayShape(shape);
+
+    shape = new Square().initSquare("yellow", 2);
+    unit = this.displayShape(shape);
+
+    shape = new Circle().init("green");
+    unit = this.displayShape(shape);
+    
+    println("---------------------");
+//    unit = shape.drawTwice(); //should give compilation error
+    unit = new Circle().initCircle("").drawTwice();
+    
+    println("---------------------");
+    unit = new ReferenceTest().run();
+
+    "done"
+  }
+  
+  def displayShape(shape : Shape) : Int = {
+    var text : String = null;
+    
+    text = "I am a " + shape.getColor();
+    text = text + " ";
+    text = text + shape.getName();
+    println(text);
+    shape.draw()
+  }
+}
+
+class ReferenceTest {
+  def run(): Int = {
+    var unit : Int = 0;
+    
+    var bool1 : Boolean = false;
+    var bool2 : Boolean = false;
+    var int1 : Int = 0;
+    var int2 : Int = 0;
+    var intArr1 : Arr = null;
+    var intArr2 : Arr = null;
+    var string1 : String = null;
+    var string2 : String = null;
+    var shape1 : Shape = null;
+    var shape2 : Shape = null;
+    
+    bool1 = true;
+    bool2 = false;
+    unit = this.swapBoolean(bool1, bool2);
+    if(bool1) 
+      println("bool1: true")
+    else
+      println("bool1: false");
+    if(bool2) 
+      println("bool2: true")
+    else
+      println("bool2: false");
+    
+    int1 = 1;
+    int2 = 2;
+    unit = this.swapInt(int1, int2);
+    println("int1: " + int1);
+    println("int2: " + int2);
+
+    intArr1 = new Arr().ofDim(1);
+    intArr2 = new Arr().ofDim(2);
+    unit = this.swapIntArr(intArr1, intArr2);
+    println("intArr1: " + intArr1.size());
+    println("intArr2: " + intArr2.size());
+    intArr1.update(0, 1);
+    intArr2.update(0, 2);
+    unit = this.swapIntArrValue(intArr1, intArr2);
+    println("intArr1val: " + intArr1.apply(0));
+    println("intArr2val: " + intArr2.apply(0));
+
+    string1 = "1";
+    string2 = "2";
+    unit = this.swapString(string1, string2);
+    println("string1: " + string1);
+    println("string2: " + string2);
+    unit = this.concatStringValue(string1, string2);
+    println("string1val: " + string1);
+    println("string2val: " + string2);
+    
+    shape1 = new Shape().init("1");
+    shape2 = new Shape().init("2");
+    unit = this.swapShape(shape1, shape2);
+    println("shape1: " + shape1.getColor());
+    println("shape2: " + shape2.getColor());
+    unit = this.resetShape(shape1, shape2);
+    println("shape1new: " + shape1.getColor());
+    println("shape2set: " + shape2.getColor());
+
+    0
+  }
+
+  def swapBoolean(n1In : Boolean, n2In : Boolean) : Int = {
+    var n1: Boolean = n1In; var n2: Boolean = n2In;
+    var temp : Boolean = false;
+    temp = n1;
+    n1 = n2;
+    n2 = temp;
+    0
+  }
+
+  def swapInt(n1In : Int, n2In : Int) : Int = {
+    var n1: Int = n1In; var n2: Int = n2In;
+    var temp : Int = 0;
+    temp = n1;
+    n1 = n2;
+    n2 = temp;
+    0
+  }
+
+  def swapIntArr(n1In : Arr, n2In : Arr) : Int = {
+    var n1: Arr = n1In; var n2: Arr = n2In;
+    var temp : Arr = null;
+    temp = n1;
+    n1 = n2;
+    n2 = temp;
+    0
+  }
+
+  def swapIntArrValue(n1 : Arr, n2 : Arr) : Int = {
+    var temp : Int = 0;
+    temp = n1.apply(0);
+    n1.update(0, n2.apply(0));
+    n2.update(0, temp);
+    0
+  }
+
+  def swapString(n1In : String, n2In : String) : Int = {
+    var n1: String = n1In; var n2: String = n2In;
+    var temp : String = null;
+    temp = n1;
+    n1 = n2;
+    n2 = temp;
+    0
+  }
+
+  def concatStringValue(n1 : String, n2 : String) : Int = {
+    var n1tmp: String = n1 + n2;
+    0
+  }
+  
+  def swapShape(n1In : Shape, n2In : Shape) : Int = {
+    var n1: Shape = n1In; var n2: Shape = n2In;
+    var temp : Shape = null;
+    temp = n1;
+    n1 = n2;
+    n2 = temp;
+    0
+  }
+
+  def resetShape(n1In : Shape, n2 : Shape) : Int = {
+    var unit : Int = 0;
+    var n1: Shape = new Shape().init("3");
+    unit = n2.setColor("3");
+    0
+  }
+}
+
+class Shape {
+  var color : String = null;
+  
+  def init(col: String) : Shape = {
+    color = col;
+    this
+  }
+  
+  def getName() : String = {
+    "shape"
+  }
+  
+  def draw() : Int = {
+    println("~");
+    0
+  }
+  
+  def getColor() : String = {
+    color
+  }
+  
+  def setColor(col: String) : Int = {
+    color = col;
+    0
+  }
+}
+
+class Rectangle extends Shape {
+  var x : Int = 0;
+  var y : Int = 0;
+  
+  def initRectangle(c: String, a: Int, b: Int) : Rectangle = {
+    var unit: Shape = null;
+    x = a;
+    y = b;
+    unit = this.init(c);
+    this
+  }
+  
+  override def getName() : String = {
+    "rectangle"
+  }
+  
+  override def draw() : Int = {
+    var first: String = null;
+    var second: String = null;
+    var i: Int = 0;
+    i = 0;    
+    first = " ";
+    second = "|";
+    while(i < x) {
+      first = first + "-";
+      second = second + " ";
+      i = i + 1
+    };
+    second = second + "|";
+
+    println(first);
+    i = 0;
+    while(i < y) {
+      println(second);
+      i = i + 1
+    };
+    println(first);    
+    0
+  }
+}
+
+class Square extends Rectangle {
+  def initSquare(c: String, side: Int) : Square = {
+    var unit: Shape = null;
+    unit = this.initRectangle(c, side, side);
+    this
+  }
+
+  override def getName() : String = {
+    "square"
+  }
+}
+
+class Circle extends Shape {
+  def initCircle(c: String) : Circle = {
+    var unit: Shape = null;
+    unit = this.init(c);
+    this
+  }
+  
+  override def getName() : String = {
+    "circle"
+  }
+  
+  override def draw() : Int = {
+    println("O");    
+    0
+  }
+  
+  def drawTwice() : Int = {
+    this.draw() + this.draw()
+  }
+}
+
+object Main extends App {
+  println("Polymorphism and Reference test suite " + new PolymorphismTest().run())
+}

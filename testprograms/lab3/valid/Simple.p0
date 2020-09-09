@@ -1,0 +1,10 @@
+class Fact {
+    def computeFactorial(num : Int) : Int = {
+        num
+    }
+}
+
+object Main extends App {
+    println("f" + "oo" == "fo" + "o");
+    println(new Fact() == new Fact())
+}

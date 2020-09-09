@@ -1,0 +1,92 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+class primeTest {
+
+  var n : Int = 0;
+  var tab : Arr = null;
+
+  def mod(m : Int, n : Int) : Int = {
+    m - (n * (m / n))
+  }
+
+
+  def test(c : Int) : Boolean =
+    {
+    var i: Int = 0;
+    var a : Int = 0;
+    var l: Int = 0;
+    var toReturn : Boolean = false;
+    toReturn = true;
+    if(!(c == 2)) {
+    i = 0;
+    l = 0;
+    a=this.mod(c,2);
+    if(0==a) {
+      toReturn = false
+    } else {
+      i=3;
+      l=c/2;
+      while(toReturn && i<l)
+        {
+        a=this.mod(c,i);
+        if(a==0)
+          {
+          toReturn = false
+        };
+        i=i+2
+      }
+    }};
+    toReturn
+  }
+
+  def print() : Int = {
+    println("print() ??");
+    0
+  }
+
+  def init() : Int = {
+    var j : Int = 0;
+    n=10;
+    tab = new Arr().ofDim(10);
+    tab.update(0, 2);
+    tab.update(1, 23);
+    tab.update(2, 225);
+    tab.update(3, 32);
+    tab.update(4, 5);
+    tab.update(5, 89);
+    tab.update(6, 30);
+    tab.update(7, 2);
+    tab.update(8, 10);
+    tab.update(9, 1733);
+
+    j = 0 ;
+    while (j < n) {
+      println("Is "+tab.apply(j)+" prime ?");
+      println(this.test(tab.apply(j)));
+      j = j + 1
+    };
+
+
+    0
+  }
+
+
+}
+
+object Main extends App {
+  println(new primeTest().init())
+}

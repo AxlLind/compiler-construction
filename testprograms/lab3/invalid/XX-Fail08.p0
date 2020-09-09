@@ -1,0 +1,5 @@
+class A {
+    String string s = ""; 
+}
+
+object Main extends App { println("42") }

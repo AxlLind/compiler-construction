@@ -1,0 +1,71 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+class Sim {
+	var v1: Vector4 = null;
+	var v2: Vector4 = null;
+	var v3: Vector4 = null;
+	
+	def start(): Boolean = {
+		v1 = new Vector4();
+		v2 = new Vector4();
+		v3 = new Vector4();
+
+		println(v1.initialize("v1", 5, 3, 0, 1));
+		println(v2.initialize("v2", 0, 3, 4, 7));
+		println(v3.initialize("v3", 2, 1, 9, 5));
+		
+		println("Scalar product " + v1.getName() + "." + v2.getName() + ": " + v1.scalar(v2));
+		println("Scalar product " + v1.getName() + "." + v3.getName() + ": " + v1.scalar(v3));
+		println("Scalar product " + v2.getName() + "." + v3.getName() + ": " + v2.scalar(v3));
+
+		true
+	}
+}
+
+
+class Vector4 {
+	var vect: Arr = null;
+	var varName: String = null;
+
+	def initialize(name: String, n1: Int, n2: Int, n3: Int, n4: Int ): String = {
+		vect = new Arr().ofDim(4);
+		varName = name;
+		vect.update(0, n1);
+		vect.update(1, n2);
+		vect.update(2, n3);
+		vect.update(3, n4);
+		"New vector " + varName + " created: [" + vect.apply(0) + "," + vect.apply(1) + "," + vect.apply(2) + "," + vect.apply(3) + "]"
+	}
+
+	def scalar(v: Vector4): Int = {
+		var x: Int = 0;
+		x = vect.apply(0)*v.getInd(0) + vect.apply(1)*v.getInd(1) + vect.apply(2)*v.getInd(2) + vect.apply(3)*v.getInd(3);
+		x
+	}
+
+	def getName(): String = {
+		varName
+	}
+
+	def getInd(i: Int): Int = {
+		vect.apply(i)
+	}
+}
+
+object Main extends App {
+	if(new Sim().start()) {println("Ok")} else {println("error")}        
+}

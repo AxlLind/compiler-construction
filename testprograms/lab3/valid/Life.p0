@@ -1,0 +1,311 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+// This program must be run in a VT100 compatible terminal to get the
+// intended result. (EDIT search for 'clear' and uncomment if needed.)
+
+// NOTE: In the code that follows, there are spurious variables named
+// 'bitbucket'. They may or may not be needed due to syntax requirements
+// of Punkt0. :)
+
+class Matrix {
+  // We implement a matrix of integers using a single, unfolded array
+  // of integers, and storing the matrix row after row.
+
+  var elements : Arr = null;			// store of elements
+  var cols     : Int = 0;			// number of columns
+  
+  def init(n : Int, m : Int) : Matrix = {
+    // inits the matrix, but elements will be undefined
+    cols = m; elements = new Arr().ofDim(n*m);
+    this
+  }
+
+  def unfold(i : Int, j : Int) : Int = {
+    // returns the unfolded equivalent of index (i,j)
+    cols*(i-1) + (j-1)
+  }
+
+  def index(i : Int, j : Int) : Int = {
+    // returns the element in row i column j
+    elements.apply(this.unfold(i,j))
+  }
+
+  def assign(i : Int, j : Int, x : Int) : Int = {
+    // sets a new value for element at index (i,j)
+    elements.update(this.unfold(i,j), x);
+    x
+  }
+}
+
+class Board {
+  // The board is just a matrix with some additional operations
+  // relevant to the game.
+  var cells : Matrix = null;			// cell store (matrix)
+  var rows  : Int = 0;			// horizontal size of the board
+  var cols  : Int = 0;			// vertical size of the board
+
+  def init(n : Int, m : Int) : Board = {
+    // inits the board; initial state: every cell dead
+    var i : Int = 0;
+    var j : Int = 0;
+
+    var bitbucket : Int = 0;
+  
+    cells = new Matrix().init(n,m);	// empty store
+    rows  = n;				// vertical size
+    cols  = m;				// horizontal size
+
+    // initial matrix undefined, init every element
+    i = 1; j = 1;
+    while (i < rows || i == rows) {
+      while (j < cols || j == cols) {
+	bitbucket = this.kill(i,j);
+	j = j + 1
+      };
+      i = i + 1;
+      j = 1
+    };
+
+    this
+  }
+
+  def alive(i : Int, j : Int) : Boolean = {
+    // true if the cell at index (i,j) is alive
+    cells.index(i,j) == 1
+  }
+
+  def modulo(left : Int, right : Int) : Int = {
+    // modulo operator needed to simulate infinite board
+    var m : Int = left - right*(left/right);
+    if (m == 0) m = right; m	// hack
+  }
+
+  def vmodulo(n : Int) : Int = {
+    // modulo operator for rows
+    this.modulo(n, rows)
+  }
+
+  def hmodulo(n : Int) : Int = {
+    // modulo operator for cols
+    this.modulo(n, cols)
+  }
+
+  def n_neighbour(i : Int, j : Int) : Int = {
+    // 1 if northern neighbour is alive, 0 otherwise
+    cells.index(this.vmodulo(i-1),
+		this.hmodulo(j))
+  }
+
+  def ne_neighbour(i : Int, j : Int) : Int = {
+    // 1 if northeast neighbour is alive, 0 otherwise
+    cells.index(this.vmodulo(i-1),
+		this.hmodulo(j+1))
+  }
+
+  def nw_neighbour(i : Int, j : Int) : Int = {
+    // 1 if northwest neighbour is alive, 0 otherwise
+    cells.index(this.vmodulo(i-1),
+		this.hmodulo(j-1))
+  }
+
+  def e_neighbour(i : Int, j : Int) : Int = {
+    // 1 if east neighbour is alive, 0 otherwise
+    cells.index(this.vmodulo(i),
+		this.hmodulo(j-1))
+  }
+
+  def w_neighbour(i : Int, j : Int) : Int = {
+    // 1 if west neighbour is alive, 0 otherwise
+    cells.index(this.vmodulo(i),
+		this.hmodulo(j+1))
+  }
+
+  def s_neighbour(i : Int, j : Int) : Int = {
+    // 1 if south neighbour is alive, 0 otherwise
+    cells.index(this.vmodulo(i+1),
+		this.hmodulo(j))
+  }
+
+  def se_neighbour(i : Int, j : Int) : Int = {
+    // 1 if southeast neighbour is alive, 0 otherwise
+    cells.index(this.vmodulo(i+1),
+		this.hmodulo(j+1))
+  }
+
+  def sw_neighbour(i : Int, j : Int) : Int = {
+    // 1 if southwest neighbour is alive, 0 otherwise
+    cells.index(this.vmodulo(i+1),
+		this.hmodulo(j-1))
+  }
+
+  def neighbours(i : Int, j : Int) : Int = {
+    // number of alive neighbours of cell at (i,j)
+    this.nw_neighbour(i,j)
+      + this.n_neighbour(i,j)
+      + this.ne_neighbour(i,j)
+      + this.e_neighbour(i,j)
+      + this.w_neighbour(i,j)
+      + this.sw_neighbour(i,j)
+      + this.s_neighbour(i,j)
+      + this.se_neighbour(i,j)
+  }
+
+  def kill(i : Int, j : Int) : Int = {
+    // kill the cell at position (i,j)
+    cells.assign(i,j, 0)
+  }
+
+  def birth(i : Int, j : Int) : Int = {
+    // create a cell at position (i,j)
+    cells.assign(i,j, 1)
+  }
+}
+
+class Game {
+  // Using the previously defined board, we define a game using the
+  // rules.
+  var board : Board = null;		// already computed board
+  var rows  : Int = 0;			// horizontal size of the board
+  var cols  : Int = 0;			// horizontal size of the board
+
+  def init() : Game = {
+    // init with a default pattern
+    var bitbucket : Int = 0;
+
+    rows  = 11;				 // vertical size
+    cols  = 40;				 // horizontal size
+    board = new Board().init(rows,cols); // initial dead board
+
+    // initial pattern: glider
+    bitbucket = board.birth(1,2);
+    bitbucket = board.birth(2,3);
+    bitbucket = board.birth(3,1);
+    bitbucket = board.birth(3,2);
+    bitbucket = board.birth(3,3);
+
+    this
+  }
+
+  def iterate() : Int = {
+    // perform one iteration of the game
+    var next : Board = null;
+    var i : Int = 0;
+    var j : Int = 0;
+    var n : Int = 0;
+
+    var bitbucket : Int = 0;
+
+    // new board that will substitute the current onte
+    next = new Board().init(rows,cols);
+
+    // check game conditions for every cell
+    i = 1; j = 1;
+    while (i < rows || i == rows) {
+      while (j < cols || j == cols) {
+	n = board.neighbours(i,j);
+	if (board.alive(i,j)) {
+	  if (n-2 < 0 || 3-n < 0)
+	    bitbucket = next.kill(i,j)	// (under|over)crowding
+	  else
+	    bitbucket = next.birth(i,j) // survival
+	} else {
+	  if (n == 3){
+	    bitbucket = next.birth(i,j)} // reproduction
+	  else
+	    bitbucket = next.kill(i,j)	// still dead
+	};
+	j = j + 1
+      };
+      i = i + 1;
+      j = 1
+    };
+
+    // new board computed, make it current
+    board = next;
+
+    rows*cols
+  }
+
+  def print() : String = {
+    // print a board on the screen
+    var i : Int = 0;
+    var j : Int = 0;
+
+    // build a line, then print
+    var m : String = "";
+
+    // check every cell state
+    i = 1; j = 1;
+    while (i < rows || i == rows) {
+      while (j < cols || j == cols) {
+	if (board.alive(i,j))
+	  m = m + "o"
+	else
+	  m = m + ".";
+	j = j + 1
+      };
+      println(m);
+      i = i + 1;
+      m = "";
+      j = 1
+    };
+
+    m
+  }
+
+  def waitt() : Int = {
+    // delay to be able to "see" each iteration
+    var i : Int = 0;
+
+    // use the game itthis to eat cycles
+    var bitbucket1 : Game = null;
+    var bitbucket2 : Int = 0;
+
+    // values chosen for my machine
+    bitbucket1 = new Game().init();
+    i = 0;
+    while (i < 1000) {
+      bitbucket2 = bitbucket1.iterate();
+      i = i + 1
+    };
+    
+    i
+  }
+
+  def run(n : Int) : String = {
+    // run n iterations of the game with a default pattern
+    var i : Int = 0;
+
+    var bitbucket : Int = 0;
+
+    i = 0;
+    while (i < n) {
+      /* Uncomment following line if you think your terminal can handle it. */
+      // println("[2J[H");		// clear screen
+      println(this.print());		// print current game
+      bitbucket = this.waitt();		// wait, otherwise too fast
+      bitbucket = this.iterate();	// perform iteration
+      i = i + 1
+    };
+    ""
+  }
+}
+
+object Main extends App {
+  /* runs conway's game of life; see run() to change patterns */
+  println(new Game().init().run(10)) // 10000 iterations
+}

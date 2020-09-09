@@ -1,0 +1,13 @@
+class Fact {
+    def computeFactorial(num : Int) : Int = {
+        var num_aux : Int = 0;
+        if (num < 1)
+            num_aux = 1
+        else
+            num_aux = num * (this.computeFactorial(num - 1));
+        num_aux
+    }
+}
+object Main extends App {
+    println(new Fact().computeFactorial(10))
+}

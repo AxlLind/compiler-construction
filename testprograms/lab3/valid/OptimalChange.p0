@@ -1,0 +1,70 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+class OptChange {
+	def calculateChange(num : Int) : Int = {
+		var coins : Arr = null;
+		var values : Arr = null;
+		
+		var current : Int = 0;
+		var i : Int = 0;
+		
+		
+		coins = new Arr().ofDim(10);
+		values = new Arr().ofDim(coins.size());
+		
+		coins.update(0, 1000);
+		coins.update(1, 500);
+		coins.update(2, 200);
+		coins.update(3, 100);
+		coins.update(4, 50);
+		coins.update(5, 20);
+		coins.update(6, 10);
+		coins.update(7, 5);
+		coins.update(8, 2);
+		coins.update(9, 1);
+		
+		current = num;
+		
+		println("Received "+num+".-");
+		
+		i = 0;
+		while(i < coins.size()){
+			values.update(i, current/coins.apply(i));
+			current = current - values.apply(i)*coins.apply(i);
+			i = i + 1
+		};
+		
+		i = 0;
+		while(i < coins.size()){
+			if(values.apply(i) == 1){
+				println(values.apply(i)+" coin/bill of "+coins.apply(i)+".-")
+			}else{
+				println(values.apply(i)+" coins/bills of "+coins.apply(i)+".-")
+			};
+			i = i + 1
+		};
+		
+		current
+	}
+}
+
+object Main extends App {
+	if(new OptChange().calculateChange(3547) == 0) 
+		println("Nothing left")
+	else 
+		println("Error")
+}

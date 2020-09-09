@@ -1,0 +1,225 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+class SudokuGrid {
+
+    var grid_ : Arr = null;
+    var currentLine_ : Int = 0;
+    var currentColumn_ : Int = 0;
+    var garbage_ : Boolean = false;
+
+    def init() : SudokuGrid = {
+        var i : Int = 0;
+
+        grid_ = new Arr().ofDim(81);
+        currentLine_ = 0;
+        currentColumn_ = 0;
+        i = 0;
+        while (i < grid_.size()) {
+            grid_.update(i, 0);
+            i = i + 1
+        };
+        this
+    }
+
+    def test1() : String = {
+        /* fill the sudoku grid */
+        garbage_ = this.set(0, 0, 1);
+        garbage_ = this.set(0, 5, 7);
+        garbage_ = this.set(0, 7, 9);
+        garbage_ = this.set(1, 1, 3);
+        garbage_ = this.set(1, 4, 2);
+        garbage_ = this.set(1, 8, 8);
+        garbage_ = this.set(2, 2, 9);
+        garbage_ = this.set(2, 3, 6);
+        garbage_ = this.set(2, 6, 5);
+        garbage_ = this.set(3, 2, 5);
+        garbage_ = this.set(3, 3, 3);
+        garbage_ = this.set(3, 6, 9);
+        garbage_ = this.set(4, 1, 1);
+        garbage_ = this.set(4, 4, 8);
+        garbage_ = this.set(4, 8, 2);
+        garbage_ = this.set(5, 0, 6);
+        garbage_ = this.set(5, 5, 4);
+        garbage_ = this.set(6, 0, 3);
+        garbage_ = this.set(6, 7, 1);
+        garbage_ = this.set(7, 1, 4);
+        garbage_ = this.set(7, 8, 7);
+        garbage_ = this.set(8, 2, 7);
+        garbage_ = this.set(8, 6, 3);
+
+        println("~~~~ Original sudoku ~~~~");
+        garbage_ = this.display();
+        println("Solving sudoku...");  
+        if (this.solve()) {
+            println("~~~~~ Solved sudoku ~~~~~");
+            garbage_ = this.display()
+        } else {
+            println("Couldn't solve this sudoku :-(")
+        };
+        ""
+    }
+
+    def set(line : Int, column : Int, value : Int) : Boolean = {
+        grid_.update(line * 9 + column, value);
+        true
+    }
+    
+    def get(line : Int, column : Int) : Int = {
+        grid_.apply(line * 9 + column)
+    }
+
+    /* backtracking algorithm */
+    def solve() : Boolean = {
+        var line : Int = 0;
+        var column : Int = 0;
+        var value : Int = 0;
+        var result : Boolean = false;
+
+        if(!this.findNextUnset()) result = true
+        else result = false;
+        line = currentLine_; 
+        column = currentColumn_;
+
+        value = 1;
+        while (value < 10 && result == false) {
+            if (this.isCompatible(line, column, value)) {
+                garbage_ = this.set(line, column, value);
+                if (this.solve()) {
+                    result = true
+                } else {
+                    garbage_ = this.set(line, column, 0);
+                    currentLine_ = line;
+                    currentColumn_ = column
+                }
+            };
+            value = value + 1
+        };
+        result
+    }
+
+    def findNextUnset() : Boolean = {
+        var result : Boolean = false;
+        
+        result = false;
+        while (currentLine_ < 9 && result == false) {
+            while (currentColumn_ < 9 && result == false) {
+                if (this.isSet(currentLine_, currentColumn_)) currentColumn_ = currentColumn_ + 1
+                else result = true
+            };
+            if (result == false) {
+                currentLine_ = currentLine_ + 1;
+                currentColumn_ = 0
+            }
+        };
+        result
+    }
+
+    def isSet(line : Int, column : Int) : Boolean = {
+        0 < this.get(line, column) && this.get(line, column) < 10
+    }
+
+    def isCompatible(line : Int, column : Int, value : Int) : Boolean = {
+        !this.appearInLine(line, value) && 
+        !this.appearInColumn(column, value) &&
+        !this.appearInBlock(line, column, value)
+    }
+
+    def appearInLine(line : Int, value : Int) : Boolean = {
+        var column : Int = 0;
+        var result : Boolean = false;
+
+        column = 0;
+        result = false;
+        while (column < 9 && result == false) {
+            if (this.get(line, column) == value) result = true;
+            column = column + 1
+        };
+        result
+    }
+
+
+    def appearInColumn(column : Int, value : Int) : Boolean = {
+        var line : Int = 0;
+        var result : Boolean = false;
+
+        line = 0;
+        result = false;
+        while (line < 9 && result == false) {
+            if (this.get(line, column) == value) result = true;
+            line = line + 1
+        };
+        result
+    }
+
+    def appearInBlock(line : Int, column : Int, value : Int) : Boolean = {
+        var i : Int = 0;
+        var j : Int = 0;
+        var firstLine : Int = 0;
+        var firstColumn : Int = 0;
+        var result : Boolean = false;
+
+        firstLine = line / 3 * 3;
+        firstColumn = column / 3 * 3;
+        i = 0;
+        result = false;
+        while (i < 3 && result == false) {
+            j = 0;
+            while (j < 3 && result == false) {
+                if (this.get(firstLine + i, firstColumn + j) == value) result = true;
+                j = j + 1
+            };
+            i = i + 1
+        };
+        result
+    }
+
+    def display() : Boolean = {
+        var i : Int = 0;
+        var separator : String = null;
+
+        i = 0;
+        separator = "+-------+-------+-------+";
+        while (i < 9) {
+            if (this.mod(i, 3) == 0) println(separator);
+            println(this.lineDisplay(i));
+            i = i + 1
+        };
+        println(separator);
+        true
+    }
+
+    def lineDisplay(line : Int) : String = {
+        var column : Int = 0;
+        var result : String = null;
+
+        column = 0;
+        result = "";
+        while (column < 9) {
+           if (this.mod(column, 3) == 0) result = result + "| ";
+           if (this.isSet(line, column)) result = result + this.get(line, column) + " "
+           else result = result + "  ";
+           column = column + 1
+        };
+        result + "|"
+    }
+
+    def mod(i : Int, j : Int) : Int = { i - (i / j * j) }
+}
+
+object Main extends App {
+    println(new SudokuGrid().init().test1())
+}

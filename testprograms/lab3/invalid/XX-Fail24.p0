@@ -1,0 +1,8 @@
+class A {
+    def foo() : retType = {
+        a = this.field;
+        12
+    }
+}
+
+object Main extends App { println("42") }

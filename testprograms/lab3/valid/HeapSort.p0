@@ -1,0 +1,118 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+/* 
+ * Implements HeapSort alogorithm.
+ * Used as reference: 
+ * http://www.inf.fh-flensburg.de/lang/algorithmen/sortieren/heap/heapen.htm
+ */
+class HS {
+	var array : Arr = null; // Array to sort
+	var initialSize : Int = 0; // Size of the array
+	var size : Int = 0;	// Size of the part of the array not sorted yet
+	var foo : Int = 0; // Used to call def without useful return
+
+	def start() : String = {
+		foo = this.print();
+		foo = this.createHeap();
+		foo = this.print();
+		while(1 < size){
+			size = size - 1;
+			foo = this.exchange(0, size);
+			foo = this.siftDown(0);
+			foo = this.print()
+		};
+		"Sorting using HeapSort algorithm completed"
+	}
+
+	def init() : HS = {
+		size = 9;
+		initialSize = 9;
+		array = new Arr().ofDim(size);
+		array.update(0, 13);
+		array.update(1, 4);
+		array.update(2, 27);
+		array.update(3, 12);
+		array.update(4, 14);
+		array.update(5, 18);
+		array.update(6, 2);
+		array.update(7, 1);
+		array.update(8, 3);
+		this
+	}
+
+	def createHeap() : Int = {
+		var k : Int = 0;
+		k = size / 2 - 1;
+		while(0-1 < k){
+			foo = this.siftDown(k);
+			k = k - 1
+		};
+		0
+	}
+
+	def siftDown(kk: Int) : Int = {
+		var k : Int = 0;
+		var desc : Int = 0;
+		
+		k = kk;
+		desc = 2 * k + 1; // First descendant of k
+		
+		while(desc < size){
+			if(desc + 1 < size) // Does k has a second descendant ?
+				if (array.apply(desc) < array.apply(desc + 1))
+					desc = desc + 1; // desc est le plus grand descendant
+			
+			if(array.apply(desc) - 1 < array.apply(k)) { // k have heap property
+				desc = size // == return
+			}else{
+				foo = this.exchange(k, desc);
+				k = desc;
+				desc = 2 * k + 1
+			}
+		};
+		
+		0
+	}
+	
+	def exchange(i: Int, j: Int) : Int = {
+		var temp: Int = 0;
+		temp = array.apply(i);
+		array.update(i, array.apply(j));
+		array.update(j, temp);
+		0
+	}
+	
+	def print() : Int = {
+		var j : Int = 0;
+		var str : String = null;
+		
+		j = 0 ;
+		str = "";
+		
+		while (j < initialSize) {
+			str = str + array.apply(j);
+			j = j + 1 ;
+			if(j < initialSize)
+				str = str + "-"
+		};
+		println(str);
+		0
+	}
+}
+object Main extends App {
+	println(new HS().init().start())
+}

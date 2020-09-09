@@ -1,0 +1,151 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+// This class contains an array of integers and
+// defs to initialize, print and search the array
+// using Binary Search
+class BS {
+    var number : Arr = null;
+    var size : Int = 0;
+
+    // Invoke defs to initialize, print and search
+    // for elements on the array
+    def Start(sz : Int) : Int = {
+        var aux01 : Int = 0;
+        var aux02 : Int = 0;
+
+        aux01 = this.Init(sz);
+        aux02 = this.Print();
+
+        if (this.Search(8))
+            println("1")
+        else
+            println("0");
+        if (this.Search(19))
+            println("1")
+        else
+            println("0");
+        if (this.Search(20))
+            println("1")
+        else
+            println("0");
+        if (this.Search(21))
+            println("1")
+        else
+            println("0");
+        if (this.Search(37))
+            println("1")
+        else
+            println("0");
+        if (this.Search(38))
+            println("1")
+        else
+            println("0");
+        if (this.Search(39))
+            println("1")
+        else
+            println("0");
+        if (this.Search(50))
+            println("1")
+        else
+            println("0");
+
+        999
+    }
+
+
+    // Search for a specific value (num) using
+    // binary search
+    def Search(num : Int) : Boolean = {
+        var bs01 : Boolean = false;
+        var right : Int = 0;
+        var left : Int = 0;
+        var var_cont : Boolean = false;
+        var medium : Int = 0;
+        var aux01 : Int = 0;
+        var nt : Int = 0;
+
+        aux01 = 0;
+        bs01 = false;
+        right = number.size();
+        right = right - 1;
+        left = 0;
+        var_cont = true;
+        while (var_cont) {
+            medium = left + right;
+            medium = medium / 2;
+            aux01 = number.apply(medium);
+            if (num < aux01)
+                right = medium - 1
+            else
+                left = medium + 1;
+            if (aux01 == num)
+                var_cont = false
+            else
+                var_cont = true;
+            if (right < left)
+                var_cont = false
+            else
+                nt = 0
+        };
+
+        if (aux01 == num)
+            bs01 = true
+        else
+            bs01 = false;
+        bs01
+    }
+
+    // Print the integer array
+    def Print() : Int = {
+        var j : Int = 0;
+
+        j = 1 ;
+        while (j < (size)) {
+            println(number.apply(j));
+            j = j + 1
+        };
+        println("99999");
+        0
+    }
+
+
+    // Initialize the integer array
+    def Init(sz : Int) : Int = {
+        var j : Int = 0;
+        var k : Int = 0;
+        var aux01 : Int = 0;
+        var aux02 : Int = 0;
+
+        size = sz;
+        number = new Arr().ofDim(sz) ;
+
+        j = 1 ;
+        k = size + 1 ;
+        while (j < (size)) {
+            aux01 = 2 * j ;
+            aux02 = k - 3 ;
+            number.update(j, aux01 + aux02 );
+            j = j + 1 ;
+            k = k - 1
+        };
+        0
+    }
+}
+
+object Main extends App {
+    println(new BS().Start(20))
+}

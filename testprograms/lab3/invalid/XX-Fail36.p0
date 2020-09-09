@@ -1,0 +1,12 @@
+class FT {
+    public static void main(String [] args) {
+        {}
+    }
+}
+
+class Calls {
+    public Calls z() {
+        p = k.call(f,);
+        return 1;
+    }
+}

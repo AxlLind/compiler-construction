@@ -1,0 +1,56 @@
+class GreatestCommonDivisor {
+	var initA : Int = 0;
+	var initB : Int = 0;
+	var n : Int = 0;
+	var t : Int = 0;
+	var r : Int = 0;
+	
+	
+	def init(first : Int, second : Int) : Int = {
+		initA = first;				
+		initB = second;				
+		this.findGcd()
+	}
+	
+	def findGcd() : Int = {
+		if(initB < initA){
+			n = this.gcd(initA,initB)
+		}else {
+			n = this.gcd(initB,initA)
+		};
+		n
+	}
+	
+	def gcd(aIn : Int, bIn : Int) : Int = {
+		var a: Int = aIn; var b: Int = bIn;
+		while( !(b==0) ){
+			t = b;
+			b = this.modulo(a,b);
+			a = t
+		};
+		a
+	}
+	
+	/*
+	 *	Return the remainder of the division of number by mod
+	 */
+	def modulo(number : Int, mod : Int) : Int = {
+		r = number;
+		while( mod < r || mod == r ){
+			r = r - mod
+		};
+		r
+	}
+}
+
+object Main extends App {
+	{
+		println(new GreatestCommonDivisor().init(28,7856));
+		println(new GreatestCommonDivisor().init(344,873));
+		println(new GreatestCommonDivisor().init(456,0));
+		println(new GreatestCommonDivisor().init(33,87));
+		println(new GreatestCommonDivisor().init(47,6853))
+	}
+}
+
+/* Troll Comment */

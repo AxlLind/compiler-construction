@@ -1,0 +1,8 @@
+class Calls {
+    def calls() : Int = {
+        p = k.call(a b);
+        1
+    }
+}
+
+object Main extends App { println("42") }

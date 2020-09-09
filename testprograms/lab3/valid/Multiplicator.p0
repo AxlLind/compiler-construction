@@ -1,0 +1,151 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+class PaperMulti{
+  def showMultiplication(factor1: Int, factor2: Int): Boolean = {
+    var i : Int = 0;
+    var result : Int = 0;
+    var sum : Int = 0;
+    var tempResult : Int = 0;
+    var maxLength : Int = 0;
+    var factorArray1 : Arr = null;
+    var factorArray2 : Arr = null;
+    var aux : Int = 0;
+    var translate : Int = 0;
+    var initString : String = null;
+    
+    result = factor1 * factor2;
+    
+    factorArray1 = this.separateFactor(factor1);
+    factorArray2 = this.separateFactor(factor2);
+    
+    maxLength = this.getNumberOfDigits(result);
+    i = 0;
+    translate = 1;
+    sum = 0;
+    println("");
+    println("Multiplication by hand");
+    println("**********************");
+    
+    aux = this.printNumber(maxLength,factor1," ");
+    aux = this.printNumber(maxLength,factor2,"*");
+    aux = this.printLine(maxLength);
+    
+    while (i < (factorArray2.size())){
+      tempResult = 0;
+      tempResult = factorArray2.apply(i)*factor1*translate;
+      sum = sum + tempResult;
+      
+      if (i == 0) initString = " "
+      else initString = "+";
+      
+      aux = this.printNumber(maxLength,tempResult,initString);
+      i = i + 1;
+      translate = translate*10
+    };
+    aux = this.printLine(maxLength);
+    println(" " + sum);
+    println("**********************");
+    
+    (sum == result)
+  }
+  def printNumber(theLength: Int, number: Int, initString: String) : Int = {
+    var lineToPrint : String = null;
+    var i : Int = 0;
+    var numberLength : Int = 0;
+    
+    i = 0;
+    numberLength = this.getNumberOfDigits(number);
+    
+    lineToPrint = initString;
+    
+    while (i < (theLength-numberLength)){
+      lineToPrint = lineToPrint + " ";
+      i = i + 1
+    };
+    println(lineToPrint + number);
+    
+    0
+  }
+  def printLine(theLength: Int) : Int = {
+    var i : Int = 0;
+    var lineToPrint : String = null;
+    i = 0;
+    lineToPrint = "-";
+    
+    while (i < theLength){
+      lineToPrint = lineToPrint + "-";
+      i = i + 1
+    };
+    
+    println(lineToPrint);
+    0
+  }
+  // number%divider
+  def remainder(number: Int, divider: Int ) : Int = {
+    var result : Int = 0;
+    var realNew : Int = 0;
+    
+    result = number/divider;
+    realNew = result*divider;
+    
+    if(number < realNew) {
+      result = result - 1;
+      realNew = result*divider
+    };
+    number - realNew
+  }
+  
+  def separateFactor(factorIn: Int) : Arr = {
+    var factor: Int = factorIn;
+    var rest : Int = 0;
+    var factorParts : Arr = null;
+    var counter: Int = 0;
+    
+    counter = 0;
+    factorParts = new Arr().ofDim(this.getNumberOfDigits(factor));
+    while ( 9 < factor){
+      rest = this.remainder(factor,10);
+      factor = (factor - rest)/10;
+      factorParts.update(counter, rest);
+      counter = counter + 1
+    };
+    
+    factorParts.update(counter, factor);
+    
+    factorParts
+  }
+  
+  def getNumberOfDigits(number: Int) : Int = {
+    this.countDigits(number,10,1)
+  }
+  
+  def countDigits(number: Int, value: Int, counter: Int) : Int = {
+    if (number < value)
+      counter
+    else
+      this.countDigits(number,10*value,counter+1)
+  }  
+}
+
+object Main extends App {
+  if(new PaperMulti().showMultiplication(12345,9876)){
+    println("Completed successfully!")
+  }
+  else{
+    println("Fail..")
+  }
+}

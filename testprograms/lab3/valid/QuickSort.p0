@@ -1,0 +1,121 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+// This class contains the array of integers and
+// defs to initialize, print and sort the array
+// using Quicksort
+class QS {
+    var number : Arr = null;
+    var size : Int = 0;
+
+    // Invoke the Initialization, Sort and Printing
+    // Methods
+    def Start(sz : Int) : Int = {
+        var aux01 : Int = 0;
+        aux01 = this.Init(sz);
+        aux01 = this.Print();
+        println("9999");
+        aux01 = size - 1 ;
+        aux01 = this.Sort(0,aux01);
+        aux01 = this.Print();
+        9999
+    }
+
+    // Sort array of integers using Quicksort def
+    def Sort(left : Int, right : Int) : Int = {
+        var v : Int = 0;
+        var i : Int = 0;
+        var j : Int = 0;
+        var nt : Int = 0;
+        var t : Int = 0;
+        var cont01 : Boolean = false;
+        var cont02 : Boolean = false;
+        var aux03 : Int = 0;
+
+        t = 0 ;
+        if (left < right){
+            v = number.apply(right) ;
+            i = left - 1 ;
+            j = right ;
+            cont01 = true ;
+            while (cont01){
+                cont02 = true ;
+                while (cont02){
+                    i = i + 1 ;
+                    aux03 = number.apply(i) ;
+                    if (!(aux03<v)) cont02 = false
+                    else cont02 = true
+                };
+                cont02 = true ;
+                while (cont02){
+                    j = j - 1 ;
+                    aux03 = number.apply(j) ;
+                    if (!(v < aux03)) cont02 = false
+                    else cont02 = true
+                };
+
+
+                t = number.apply(i) ;
+                number.update(i, number.apply(j) );
+                number.update(j, t );
+                //aux03 = i + 1 ;
+                if ( j < (i+1)) cont01 = false
+                else cont01 = true
+            };
+            number.update(j, number.apply(i) );
+            number.update(i, number.apply(right) );
+            number.update(right, t );
+            nt = this.Sort(left,i-1);
+            nt = this.Sort(i+1,right)
+        }
+        else nt = 0;
+        0
+    }
+
+    def Print() : Int = {
+        var j : Int = 0;
+
+        j = 0 ;
+        while (j < (size)) {
+            println(number.apply(j));
+            j = j + 1
+        };
+        0
+    }
+
+    // Initialize array of integers
+    def Init(sz : Int) : Int = {
+        size = sz ;
+        number = new Arr().ofDim(sz) ;
+
+        number.update(0, 20 );
+        number.update(1, 7  ); 
+        number.update(2, 12 );
+        number.update(3, 18 );
+        number.update(4, 2  ); 
+        number.update(5, 11 );
+        number.update(6, 6  ); 
+        number.update(7, 9  ); 
+        number.update(8, 19 ); 
+        number.update(9, 5  );
+
+        0
+    }
+}
+
+object Main extends App {
+    println(new QS().Start(10))
+}

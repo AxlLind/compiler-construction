@@ -1,0 +1,356 @@
+class Arr {
+  def ofDim(i: Int): Arr = { if (0 == i) new Empty() else new Cons().init(0, this.ofDim(i-1)) }
+  def update(index: Int, newval: Int): Unit = {{}}
+  def apply(index: Int): Int = {0}
+  def size(): Int = {0}
+} 
+class Empty extends Arr {}
+class Cons extends Arr {
+  var value: Int = 0;
+  var next: Arr = new Empty();
+  def init(x: Int, ne: Arr): Cons = { value = x; next = ne; this }
+  override def update(index: Int, newval: Int): Unit = { if (0 == index) value = newval else next.update(index - 1, newval) }
+  override def apply(index: Int): Int = { if (0 == index) value else next.apply(index - 1) }
+  override def size(): Int = { 1 + next.size() }
+} // End of Arr implementation
+
+class NM {
+	// Callable version of sqrt
+	def sqrt(n : Int) : Real = {
+		var guess : Real = null;
+		var orig: Real = null;
+		var result: Real = null;
+		
+		// first guess: 2
+		guess = new Real().init(1,4);
+		orig = new Real().init(n,4);
+
+		result = this.sqrtIter(guess, 0, 5, orig);
+		result
+	}
+
+	// Function with more parameters
+	def sqrtIter(guess : Real, i : Int, maxIter : Int, original : Real) : Real = {
+		var average : Real = null;
+		var quotient: Real = null;
+		var result: Real = null;
+
+		// Check if we have iterated enough
+		if (i == maxIter) {
+			result = guess
+		}
+
+		else {
+
+			// Keep posted about our progress
+			println("Iteration " + i + ": Guess is " + guess.str());
+
+			// If not, iterate some more
+			quotient = original.divide(guess);
+			average = guess.plus(quotient).divide(new Real().init(2,4));
+
+			// Now recurse
+			result = this.sqrtIter(average, i+1, maxIter, original)
+		};
+		result
+	}
+}
+
+/* 
+ * Kindly borrowed from PI.slac and modified by adding a divide def
+ */
+
+// represents real numbers as a number plus an array containing the digits
+class Real {
+    var integerPart : Int = 0;
+    var digits : Arr = null;
+    var util : Util = null;
+
+    def init(intPart : Int, digitsCount: Int): Real = {
+        var i : Int = 0;
+
+        util = new Util();
+        integerPart = intPart;
+        digits = new Arr().ofDim(digitsCount);
+        i = 0;
+        while(i < digitsCount) {
+            digits.update(i, 0);
+            i = i + 1
+        };
+        this
+    }
+
+    def getDigits() : Arr = {
+        digits
+    }
+
+    def getIntegerPart() : Int = {
+        integerPart
+    }
+
+    def setIntegerPart(p : Int) : Real = {
+        integerPart = p;
+        this
+    }
+
+	// Divides one real with another
+	def divide(other: Real) : Real = {
+		var i : Int = 0;
+		var int1: Int = 0;
+		var int2: Int = 0;
+		var len: Int = 0;
+		var otherDigits: Arr = null;
+		var f: Frac = null;
+		var result: Real = null;
+
+		if (digits.size() < other.getDigits().size()) {
+			len = digits.size()
+		} else {
+			len = other.getDigits().size()
+		};
+
+		//println("Dividing " + this.str() + " with " + other.str());
+
+		int1 = this.getIntegerPart();
+		int2 = other.getIntegerPart();
+		// Create integer versions of both numbers 
+		i = 0;	
+		otherDigits = other.getDigits();
+		while(i < len) {
+			int1 = (int1 * 10) + digits.apply(i);
+			int2 = (int2 * 10) + otherDigits.apply(i);
+			i = i + 1
+		};
+
+		//println("int1: " + int1 + " and int2: " + int2);
+		// Make into a fraction
+		f = new Frac().init(int1,int2);
+
+		//println("Fraction gives " + f.str());
+
+		// Convert back to real
+		result = new Real().init(3,4).evalFrac(f);			
+		result
+	}
+
+    def evalFrac(frac : Frac) : Real = {
+        var leftover : Int = 0;
+        var i : Int = 0;
+        var den : Int = 0;
+
+        den = frac.getDenominator();
+        integerPart = frac.getNumerator() / den;
+        if(!frac.isPos()) {
+            integerPart = 0 - integerPart
+        };
+        leftover = util.mod(frac.getNumerator(), den);
+
+        i = 0;
+        while(i < digits.size()) {
+            leftover = 10 * leftover;
+            digits.update(i, leftover / den);
+            leftover = util.mod(leftover, den);
+            i = i + 1
+        };
+        this
+    }
+
+    // note that this only works for positive reals
+    def plus(other : Real) : Real = {
+        var len : Int = 0;
+        var od : Arr = null;
+        var resDig : Arr = null;
+        var carry : Int = 0;
+        var i : Int = 0;
+        var sum : Int = 0;
+        var result : Real = null;
+
+        od = other.getDigits();
+        // Made the length taking algorithm a little more sensible
+        if(digits.size() < od.size()) {
+            len = digits.size()
+        } else {
+            len = od.size()
+        };
+
+        result = new Real().init(0, len);
+        resDig = result.getDigits();
+
+        carry = 0;
+        i = len - 1;
+
+        while(!(i < 0)) {
+            sum = digits.apply(i) + od.apply(i) + carry;
+            carry = sum / 10;
+            //println(digits.apply(i] + " + " + od[i) + " = " + sum + "(" + carry + ")");
+            resDig.update(i, util.mod(sum, 10));
+            i = i - 1
+        }; 
+
+        result.setIntegerPart(integerPart + other.getIntegerPart() + carry)
+    }
+
+    def str() : String = {
+        var ret : String = null;
+        var i : Int = 0;
+
+        ret = "" + integerPart + ".";
+        i = 0;
+        while(i < digits.size()) {
+            ret = ret + digits.apply(i);
+            i = i + 1
+        };
+        ret
+    }
+}
+
+// Borrowed from Pi.slac
+class Frac {
+    var numerator : Int = 0;
+    var denominator : Int = 0;
+    var sign : Boolean = false; // true means positive.
+    var util : Util = null;
+
+    def init(n : Int, d : Int) : Frac = {
+        util = new Util();
+
+        numerator = util.abs(n);
+        denominator = util.abs(d);
+        sign = (n < 0 && d < 0 || (0 < n || n == 0) && (0 < d || d == 0)); 
+        this.simplify()
+    }
+
+    def getNumerator() : Int = {
+        numerator
+    }
+
+    def getDenominator() : Int = {
+        denominator
+    }
+
+    def setPos(positive : Boolean) : Frac = {
+        sign = positive;
+        this
+    }
+
+    def isPos() : Boolean = {
+        sign
+    }
+
+    def simplify() : Frac = {
+        var gcd_ : Int = 0;
+
+        if(!(numerator == 0) && !(denominator == 0)) {
+            gcd_ = util.gcd(numerator, denominator);
+
+            if(!(gcd_ == 1)) {
+                numerator = numerator / gcd_;
+                denominator = denominator / gcd_
+            }
+        };
+
+        this
+    }
+
+    def plus(other : Frac) : Frac = {
+        var lcm : Int = 0;
+        var lfac : Int = 0;
+        var rfac : Int = 0;
+
+        lcm = util.lcm(denominator, other.getDenominator());
+        lfac = lcm / denominator;
+
+        if(!sign) {
+            lfac = 0 - lfac
+        };
+
+        rfac = lcm / other.getDenominator();
+
+        if(!other.isPos()) {
+            rfac = 0 - rfac
+        };
+
+        (new Frac()).init((lfac * numerator) + (rfac * other.getNumerator()), lcm)
+    }
+
+    def minus(other : Frac) : Frac = {
+        this.plus(other.negative())
+    }
+
+    def times(other : Frac) : Frac = {
+        (new Frac()).init(numerator * other.getNumerator(), denominator * other.getDenominator()).simplify().setPos(this.isPos() && other.isPos() || !this.isPos() && !other.isPos())
+    }
+
+    def divided(other : Frac) : Frac = {
+        this.times(other.inverse())
+    }
+
+    def inverse() : Frac = {
+        (new Frac()).init(denominator, numerator)
+    }
+
+    def negative() : Frac = {
+        (new Frac()).init(numerator, denominator).setPos(false)
+    }
+
+    def str() : String = {
+        var result : String = null;
+        if(sign) {
+            result = ""
+        } else {
+            result = "-"
+        };
+        result + numerator + "/" + denominator
+    }
+}
+// Also borrowed from Pi.slac
+// Some useful stuff
+class Util {
+    def abs(v : Int) : Int = {
+        var res : Int = 0;
+
+        if(!(v < 0)) {
+            res = v
+        } else {
+            res = 0 - v
+        };
+        res
+    }
+
+    def gcd(m_ : Int, n_ : Int) : Int = {
+        var t : Int = 0;
+        var r : Int = 0;
+        var result : Int = 0;
+        var m : Int = 0;
+        var n : Int = 0;
+
+        m = this.abs(m_);
+        n = this.abs(n_);
+
+        if (m < n) {
+            t = m;
+            m = n;
+            n = t
+        };
+
+        r = this.mod(m,n); // m % n;
+
+        if (r == 0) {
+            result = n
+        } else {
+            result = this.gcd(n, r)
+        };
+        result
+    }
+
+    def lcm(m : Int, n : Int) : Int = {
+        (n*m) / this.gcd(n,m)
+    }
+
+    def mod(m : Int, n : Int) : Int = {
+        m - (n * (m / n))
+    }
+}
+object Main extends App {
+    println("Final result: " + new NM().sqrt(2).str())
+}

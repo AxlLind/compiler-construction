@@ -1,0 +1,210 @@
+// This programm simulates a very simple car and truck renting agency
+// It can specially be used to test inheritance (the Car and Truck 
+// classes extends from the Vehicle class) 
+
+// The renting agecy
+class RentingAgency {
+   // simulates an example day in a renting agency
+   def exampleDay() : String = {
+      var client1 : Client = null;
+      var client2 : Client = null;
+      var client3 : Client = null;
+      
+      var car1 : Car = null;
+      var car2 : Car = null;
+      
+      var truck1 : Truck = null;
+      var truck2 : Truck = null;
+      
+      client1 = new Client();
+      client2 = new Client();
+      client3 = new Client();
+      
+      car1 = new Car();
+      car2 = new Car();
+      
+      truck1 = new Truck();
+      truck2 = new Truck();
+      
+      println(car1.init(27275,"Ferrari",2));
+      println(car2.init(32113,"VW",7));
+      println(truck1.init(12879,"Opel",40));
+      println(truck2.init(99234,"Renault",56));
+      println(client1.create(1,"Charlie Sheen"));
+      println(client2.create(2,"Angelina Jolie"));
+      println(client3.create(3,"Cameron Diaz"));
+      println("");
+      
+      println("----- START OF THE EXAMPLE DAY OF A RENTING AGENCY -----");
+      println("");
+      println(this.checkout(client1,car1));
+      println(this.checkout(client2,car1));
+      println(this.checkout(client1,car2));
+      println(this.checkin(client1,car1,453));
+      println(this.checkout(client3, truck2));
+      println(this.checkout(client3, truck1));
+      println(this.checkout(client2, car1)); 
+      println(this.checkin(client3,truck2,1011));
+      println(this.checkin(client2,car1,123));     
+      "------ END OF THE EXAMPLE DAY OF A RENTING AGENCY ------"
+   }
+   
+   // the given client tries to rent the given vehicle
+   def checkout(client : Client, vehicle : Vehicle) : String = {
+      println(" " + client.rent(vehicle));
+      ""
+   }
+   
+   // the given client tries to return the given vehicle
+   def checkin(client : Client, vehicle : Vehicle, milage : Int) : String = {
+      println(" " + client.restore(vehicle, milage));
+      ""
+   }
+}
+
+// The client class stores all the needed information about a client
+// (A client can just rent one vehicle on the same time)
+class Client {
+   // general client attributes
+   var clientNumber : Int = 0;
+   var name : String = null;
+   
+   // information about the rented vehicle
+   var rent : Boolean = false;
+   var rentedVehicle : Int = 0;
+   
+   // creates the client (should be called only once!)
+   def create(nb : Int,n : String) : String = {
+      var msg : String = null;
+      
+      clientNumber = nb;
+      name = n;
+      msg = "CREATE : Client " + clientNumber + " (" + name + ") created!";
+      
+      msg
+   }
+   
+   // the client wants to rent a vehicle
+   def rent(vehicle : Vehicle) : String = {
+      var msg : String = null;
+      
+      if(rent || vehicle.getRented()) {
+         if(rent) {
+            msg = "NO RENT : " + name + " has already #" + rentedVehicle + " (1 vehicle/client)"
+         } else {
+            msg = "NO RENT : " + name + " can't rent #" + vehicle.getNumber() + " (already in use)"
+         }
+      }else{
+         rent = true;
+         rentedVehicle = vehicle.getNumber();
+         msg = "RENT : " + name + " just rented : " + vehicle.checkout()
+      };
+      msg
+   }
+   
+   // the client returns a vehicle
+   def restore(vehicle : Vehicle, milage : Int) : String = {
+      var msg : String = null;
+      
+      if(rent && vehicle.getRented() && rentedVehicle == vehicle.getNumber()) {
+         rent = false;
+         rentedVehicle = 0;
+         
+         msg = "RETURN : " + name + " just brought back : " + vehicle.checkin(milage)
+      } else {
+         msg = "NO RETURN : " + name + " didn't rent #" + vehicle.getNumber() + " or the vehicle is already back!"
+      };
+      msg
+   }
+}
+
+// The general class Vehicle contains all the variables and defs
+// that cars and trucks share together
+class Vehicle {
+   // general attributes
+   var number : Int = 0;
+   var milage : Int = 0;
+   var brand : String = null;
+   
+   // true = vehicle rented, false = vehicle available
+   var rented : Boolean = false;
+   
+   // checkout the vehicle after a client rented it
+   def checkout() : String = {
+      rented = true;  
+      this.description()
+   }
+   
+   // checkin the vehicle after the client brought it back
+   def checkin(mil : Int) : String = {
+      rented = false;
+      milage = milage + mil;    
+      this.description()
+   }
+   
+   // gives a string with the cars attributes
+   def description() : String = {
+      var descr : String = null;
+      descr = "#" + number + ", " + brand + ", " + milage + "km";
+      descr
+   }
+   
+   def getNumber() : Int = {
+      number
+   }
+   
+   def getMilage() : Int = {
+      milage
+   }
+   
+   def getBrand() : String = {
+      brand
+   }
+   
+   def getRented() : Boolean = {
+      rented
+   }
+
+}
+
+// The class for cars
+class Car extends Vehicle {
+   // number of seats in the car
+   var nbSeats : Int = 0;
+   
+   // initialize the new car (should be called only once)
+   def init(nb : Int, br : String, seats : Int) : String = {
+      number = nb;
+      brand = br;
+      milage = 0;
+      nbSeats = seats;
+      "CAR ADDED: #" + number + ", " + brand + ", " + nbSeats + " seats"
+   }
+   
+   def getNbSeats() : Int = {
+      nbSeats
+   }    
+}
+
+// The class for trucks
+class Truck extends Vehicle {
+   // max. weight in tons
+   var maxWeight : Int = 0;
+   
+   // initialize the new truck (should be called only once)
+   def init(nb : Int, br : String, weight : Int) : String = {
+      number = nb;
+      brand = br;
+      milage = 0;
+      maxWeight = weight;
+      "TRUCK ADDED : #" + number + ", " + brand + ", " + maxWeight + "t"
+   }
+   
+   def getMaxWeight() : Int = {
+      maxWeight
+   }
+}
+
+object Main extends App {
+    println(new RentingAgency().exampleDay())
+}
