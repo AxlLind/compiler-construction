@@ -10,7 +10,7 @@ object Lexer extends Phase[File, Iterator[Token]] {
     val source = scala.io.Source.fromFile(f).mkString
     var ptr = 0
     var hasEmittedEOF = false
-    val wordRegex = "^\\w+".r
+    val wordRegex = "^(?s)(\\w+).*".r
     val whitespace = "^\\s+".r
 
     def emitToken(tokenSize: Int, tokenType: TokenKind): Token = {
@@ -85,42 +85,35 @@ object Lexer extends Phase[File, Iterator[Token]] {
           case s"-$_"  => emitToken(1, MINUS)
           case s"*$_"  => emitToken(1, TIMES)
           case s"/$_"  => emitToken(1, DIV)
-          case s"""\"$rest""" =>
-            rest.indexOf('"') match {
-              case -1 => emitToken(1, BAD)
-              case i =>
-                val s = rest.slice(0,i-1)
-                new STRLIT(s).setPos(emitToken(i+1, STRLITKIND))
-            }
-          case src => wordRegex.findFirstIn(src) match {
-            case Some("object")   => emitToken(6, OBJECT)
-            case Some("class")    => emitToken(5, CLASS)
-            case Some("def")      => emitToken(3, DEF)
-            case Some("override") => emitToken(8, OVERRIDE)
-            case Some("var")      => emitToken(3, VAR)
-            case Some("Unit")     => emitToken(4, UNIT)
-            case Some("String")   => emitToken(6, STRING)
-            case Some("extends")  => emitToken(7, EXTENDS)
-            case Some("Int")      => emitToken(3, INT)
-            case Some("Boolean")  => emitToken(7, BOOLEAN)
-            case Some("while")    => emitToken(5, WHILE)
-            case Some("if")       => emitToken(2, IF)
-            case Some("else")     => emitToken(4, ELSE)
-            case Some("true")     => emitToken(4, TRUE)
-            case Some("false")    => emitToken(5, FALSE)
-            case Some("this")     => emitToken(4, THIS)
-            case Some("null")     => emitToken(4, NULL)
-            case Some("new")      => emitToken(3, NEW)
-            case Some("println")  => emitToken(7, PRINTLN)
-            case Some(w) => {
-              if (w(0).isLetter)
-                return new ID(w).setPos(emitToken(w.length, IDKIND))
-              if (w.forall(_.isDigit))
-                return new INTLIT(w.toInt).setPos(emitToken(w.length, IDKIND))
-              emitErr("Bad identifier", w.length)
-            }
-            case None => emitErr("Unknown token", 1)
+          case wordRegex(w) => w match {
+            case "if"       => emitToken(2, IF)
+            case "object"   => emitToken(6, OBJECT)
+            case "class"    => emitToken(5, CLASS)
+            case "def"      => emitToken(3, DEF)
+            case "var"      => emitToken(3, VAR)
+            case "Unit"     => emitToken(4, UNIT)
+            case "String"   => emitToken(6, STRING)
+            case "extends"  => emitToken(7, EXTENDS)
+            case "Int"      => emitToken(3, INT)
+            case "Boolean"  => emitToken(7, BOOLEAN)
+            case "while"    => emitToken(5, WHILE)
+            case "else"     => emitToken(4, ELSE)
+            case "true"     => emitToken(4, TRUE)
+            case "false"    => emitToken(5, FALSE)
+            case "this"     => emitToken(4, THIS)
+            case "null"     => emitToken(4, NULL)
+            case "new"      => emitToken(3, NEW)
+            case "println"  => emitToken(7, PRINTLN)
+            case "override" => emitToken(8, OVERRIDE)
+            case w if w(0).isLetter => new ID(w).setPos(emitToken(w.length, IDKIND))
+            case w if w.forall(_.isDigit) => new INTLIT(w.toInt).setPos(emitToken(w.length, IDKIND))
+            case w => emitErr("Bad identifier", w.length)
           }
+          case s"""\"$rest""" => rest.indexOf('"') match {
+            case -1 => emitErr("Unmatched string literal", 1)
+            case i => new STRLIT(rest.slice(0,i-1)).setPos(emitToken(i+1, STRLITKIND))
+          }
+          case _ => emitErr("Unknown token", 1)
         }
       }
     }
