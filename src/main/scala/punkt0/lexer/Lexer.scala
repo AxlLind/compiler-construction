@@ -4,14 +4,13 @@ package lexer
 import java.io.File
 
 object Lexer extends Phase[File, Iterator[Token]] {
-  import Reporter._
+  val wordRegex = "^(?s)(\\w+).*".r
+  val whitespace = "^\\s+".r
 
   def run(f: File)(ctx: Context): Iterator[Token] = {
     val source = scala.io.Source.fromFile(f).mkString
+    var hasMore = true
     var ptr = 0
-    var hasEmittedEOF = false
-    val wordRegex = "^(?s)(\\w+).*".r
-    val whitespace = "^\\s+".r
 
     def emitToken(tokenSize: Int, tokenType: TokenKind): Token = {
       val line = source.slice(0, ptr).count(_ == '\n') + 1
@@ -26,45 +25,47 @@ object Lexer extends Phase[File, Iterator[Token]] {
       errToken
     }
 
+    def emitEOF: Token = {
+      hasMore = false
+      emitToken(0, EOF)
+    }
+
     def consumeWhitespaceAndComments: Option[Token] = {
       var prevPtr = -1
       while (prevPtr != ptr) {
         prevPtr = ptr
+
         ptr += whitespace
           .findFirstIn(source.slice(ptr, source.length))
           .map(_.length)
           .getOrElse(0)
 
         if (source.slice(ptr, ptr + 2) == "//") {
-          source.slice(ptr, source.length).indexOf('\n') match {
+          source.indexOf('\n', ptr + 2) match {
             case -1 => ptr = source.length
-            case i => ptr += i + 1
+            case i => ptr = i + 1
           }
         }
 
         if (source.slice(ptr, ptr + 2) == "/*") {
-          val endOfComment = source.slice(ptr + 2, source.length).indexOf("*/")
-          if (endOfComment == -1)
-            return Some(emitErr("Unmatched block comment", 2))
-          ptr += endOfComment + 4
+          source.indexOf("*/", ptr + 2) match {
+            case -1 => return Some(emitErr("Unmatched block comment", 2))
+            case i => ptr = i + 2
+          }
         }
       }
       None
     }
 
     new Iterator[Token] {
-      def hasNext = !hasEmittedEOF
+      def hasNext = hasMore
 
       def next(): Token = {
         val maybeToken = consumeWhitespaceAndComments
-        if (maybeToken.isDefined) {
+        if (maybeToken.isDefined)
           return maybeToken.get
-        }
-
-        if (ptr >= source.length) {
-          hasEmittedEOF = true
-          return emitToken(0, EOF)
-        }
+        if (ptr >= source.length)
+          return emitEOF
 
         source.slice(ptr, source.length) match {
           case s":$_"  => emitToken(1, COLON)
