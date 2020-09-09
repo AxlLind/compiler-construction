@@ -24,7 +24,8 @@ trait Positioned {
 
   def hasPos = info.isDefined
 
-  def setPos(file: File, pos: Int): this.type = {
+  def setPos(file: File, line: Int, col: Int): this.type = {
+    val pos = (line << Positioned.COLUMN_BITS) | (col & Positioned.COLUMN_MASK)
     info = Some((file, pos))
     this
   }

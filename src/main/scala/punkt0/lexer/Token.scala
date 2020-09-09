@@ -17,8 +17,8 @@ case object COLON extends TokenKind       // :
 case object SEMICOLON extends TokenKind   // ;
 case object DOT extends TokenKind         // .
 case object COMMA extends TokenKind       // ,
-case object EQSIGN extends TokenKind      // =
 case object EQUALS extends TokenKind      // ==
+case object EQSIGN extends TokenKind      // =
 case object BANG extends TokenKind        // !
 case object LPAREN extends TokenKind      // (
 case object RPAREN extends TokenKind      // )
