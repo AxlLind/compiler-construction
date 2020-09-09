@@ -57,8 +57,10 @@ object Main {
     var tokens = Lexer.run(f)(ctx)
     if (ctx.doTokens) {
       tokens foreach println
+      Reporter.terminateIfErrors()
       return
     }
+    Reporter.terminateIfErrors()
   }
 
 }

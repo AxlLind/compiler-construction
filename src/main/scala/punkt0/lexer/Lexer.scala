@@ -20,6 +20,12 @@ object Lexer extends Phase[File, Iterator[Token]] {
       new Token(tokenType).setPos(f, line, col)
     }
 
+    def emitErr(msg: String, tokenSize: Int): Token = {
+      val errToken = emitToken(tokenSize, BAD)
+      Reporter.error(msg, errToken)
+      errToken
+    }
+
     def consumeWhitespaceAndComments: Option[Token] = {
       var prevPtr = -1
       while (prevPtr != ptr) {
@@ -39,7 +45,7 @@ object Lexer extends Phase[File, Iterator[Token]] {
         if (source.slice(ptr, ptr + 2) == "/*") {
           val endOfComment = source.slice(ptr + 2, source.length).indexOf("*/")
           if (endOfComment == -1)
-            return Some(emitToken(2, BAD))
+            return Some(emitErr("Unmatched block comment", 2))
           ptr += endOfComment + 4
         }
       }
@@ -111,9 +117,9 @@ object Lexer extends Phase[File, Iterator[Token]] {
                 return new ID(w).setPos(emitToken(w.length, IDKIND))
               if (w.forall(_.isDigit))
                 return new INTLIT(w.toInt).setPos(emitToken(w.length, IDKIND))
-              emitToken(w.length, BAD)
+              emitErr("Bad identifier", w.length)
             }
-            case None => emitToken(1, BAD)
+            case None => emitErr("Unknown token", 1)
           }
         }
       }
