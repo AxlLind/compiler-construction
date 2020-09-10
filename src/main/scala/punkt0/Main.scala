@@ -52,11 +52,10 @@ object Main {
   }
 
   def printMain(ctx: Context): Nothing = {
-    // val program = Lexer.andThen(Parser).run(ctx.file.get)(ctx)
-    // prettyPrint(program)
-    println("Not yet implemented!")
+    val program = Lexer.andThen(Parser).run(ctx.file.get)(ctx)
+    println(Printer.apply(program))
     Reporter.terminateIfErrors()
-    sys.exit(1)
+    sys.exit(0)
   }
 
   def eval(ctx: Context): Nothing = {
