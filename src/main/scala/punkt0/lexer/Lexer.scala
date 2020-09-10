@@ -110,11 +110,11 @@ object Lexer extends Phase[File, Iterator[Token]] {
             case w if w.forall(_.isDigit) => new INTLIT(w.toInt).setPos(emitToken(w.length, IDKIND))
             case w => emitErr("Bad identifier", w.length)
           }
-          case s"""\"$rest""" => rest.indexOf('"') match {
+          case rest if rest(0) == '"' => rest.indexOf('"', 1) match {
             case -1 => emitErr("Unmatched string literal", 1)
-            case i => new STRLIT(rest.slice(0,i-1)).setPos(emitToken(i+1, STRLITKIND))
+            case i  => new STRLIT(rest.slice(1, i)).setPos(emitToken(i+1, STRLITKIND))
           }
-          case _ => emitErr("Unknown token", 1)
+          case _ => emitErr(s"Unknown token '${source(ptr)}'", 1)
         }
       }
     }
