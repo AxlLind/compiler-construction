@@ -22,9 +22,8 @@ object Parser extends Phase[Iterator[Token], Program] {
       Reporter.fatal("expected: " + (kind::more.toList).mkString(" or ") + ", found: " + currentToken, currentToken)
 
     def expectedToken(kind: TokenKind): Token = {
-      expected(kind)
       val token = currentToken
-      readToken
+      eat(kind)
       token
     }
 
@@ -49,12 +48,16 @@ object Parser extends Phase[Iterator[Token], Program] {
     }
 
     def parseExprLookAhead(expr: ExprTree): ExprTree = {
-      currentToken.kind match {
+      val newExpr = currentToken.kind match {
         case DOT =>
           eat(DOT)
           val method = parseIdentifier
           eat(LPAREN)
-          val arguments = parseExprList(COMMA)
+          val arguments =
+            if (currentToken.kind != RPAREN)
+              parseExprList(COMMA)
+            else
+              List[ExprTree]()
           eat(RPAREN)
           MethodCall(expr, method, arguments)
         case AND =>
@@ -89,8 +92,9 @@ object Parser extends Phase[Iterator[Token], Program] {
           eat(DIV)
           val rhs = parseExpr
           Div(expr, rhs)
-        case _ => expr
+        case _ => return expr
       }
+      parseExprLookAhead(newExpr)
     }
 
     def parseExpr: ExprTree = {
@@ -131,6 +135,11 @@ object Parser extends Phase[Iterator[Token], Program] {
           val expr = parseExpr
           eat(RPAREN)
           expr
+        case LBRACE =>
+          eat(LBRACE)
+          val exprs = parseExprList(SEMICOLON)
+          eat(RBRACE)
+          Block(exprs)
         case IF =>
           eat(IF)
           eat(LPAREN)
@@ -156,7 +165,7 @@ object Parser extends Phase[Iterator[Token], Program] {
           val expr = parseExpr
           eat(RPAREN)
           Println(expr)
-        case _ => Reporter.fatal("Unexpected token in expr")
+        case _ => expected(BAD) // FIXME
       }
       parseExprLookAhead(expr)
     }
@@ -196,7 +205,6 @@ object Parser extends Phase[Iterator[Token], Program] {
     }
 
     def parseMethodDecl: MethodDecl = {
-      // MethodDecl(overrides: Boolean, retType: TypeTree, id: Identifier, args: List[Formal], vars: List[VarDecl], exprs: List[ExprTree], retExpr: ExprTree)
       val overrides = currentToken.kind == OVERRIDE
       if (overrides) eat(OVERRIDE)
 
