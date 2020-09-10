@@ -137,7 +137,11 @@ object Parser extends Phase[Iterator[Token], Program] {
           expr
         case LBRACE =>
           eat(LBRACE)
-          val exprs = parseExprList(SEMICOLON)
+          val exprs =
+            if (currentToken.kind != RBRACE)
+              parseExprList(SEMICOLON)
+            else
+              List[ExprTree]()
           eat(RBRACE)
           Block(exprs)
         case IF =>
@@ -206,8 +210,8 @@ object Parser extends Phase[Iterator[Token], Program] {
 
     def parseMethodDecl: MethodDecl = {
       val overrides = currentToken.kind == OVERRIDE
-      if (overrides) eat(OVERRIDE)
-
+      if (overrides)
+        eat(OVERRIDE)
       eat(DEF)
       val id = parseIdentifier
 
@@ -253,8 +257,10 @@ object Parser extends Phase[Iterator[Token], Program] {
       val id = parseIdentifier
       var parent = None: Option[Identifier]
 
-      if (currentToken.kind == EXTENDS)
+      if (currentToken.kind == EXTENDS) {
+        eat(EXTENDS)
         parent = Some(parseIdentifier)
+      }
 
       eat(LBRACE)
       val vars = parseVarDeclList
@@ -264,7 +270,7 @@ object Parser extends Phase[Iterator[Token], Program] {
 
       eat(RBRACE)
 
-      ClassDecl(id, parent, vars, methods)
+      ClassDecl(id, parent, vars, methods.reverse)
     }
 
     def parseGoal: Program = {
