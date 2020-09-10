@@ -24,11 +24,11 @@ object Printer {
       val args = p.args.map(apply(_)).mkString(", ")
       val vars = p.vars.map(indented(_,i+1)).mkString("\n") + (if (p.vars.isEmpty) "" else "\n")
       val exprs = p.exprs.map(indented(_,i+1)).mkString(";\n") + (if (p.exprs.isEmpty) "" else "\n")
-      s"${overrides}def ${apply(p.id)}(${args}): ${apply(p.retType)} = {\n${vars}${exprs}${indented(p.retExpr,i+1)};\n${"  " * i}}"
+      s"${overrides}def ${apply(p.id)}(${args}): ${apply(p.retType)} = {\n${vars}${exprs}${indented(p.retExpr,i+1)}\n${"  " * i}}"
     case p: MethodCall =>
       val args = p.args.map(apply(_,i)).mkString(",")
       s"${apply(p.obj, i)}.${apply(p.meth)}(${args})"
-    case p: VarDecl => s"var ${apply(p.id)}: ${apply(p.tpe)} = ${apply(p.expr, i)}};"
+    case p: VarDecl => s"var ${apply(p.id)}: ${apply(p.tpe)} = ${apply(p.expr, i)};"
     case p: Formal => s"${apply(p.id)}: ${apply(p.tpe)}"
     case p: And => s"${apply(p.lhs, i)} && ${apply(p.rhs, i)}"
     case p: Or => s"${apply(p.lhs, i)} || ${apply(p.rhs, i)}"

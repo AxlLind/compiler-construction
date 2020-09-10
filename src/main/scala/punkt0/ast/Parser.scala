@@ -143,7 +143,7 @@ object Parser extends Phase[Iterator[Token], Program] {
             else
               List[ExprTree]()
           eat(RBRACE)
-          Block(exprs)
+          Block(exprs.reverse)
         case IF =>
           eat(IF)
           eat(LPAREN)
@@ -235,7 +235,7 @@ object Parser extends Phase[Iterator[Token], Program] {
       val retExpr::exprs = parseExprList(SEMICOLON)
       eat(RBRACE)
 
-      MethodDecl(overrides, retType, id, args, vars, exprs, retExpr)
+      MethodDecl(overrides, retType, id, args, vars.reverse, exprs.reverse, retExpr)
     }
 
     def parseMainDecl: MainDecl = {
@@ -249,7 +249,7 @@ object Parser extends Phase[Iterator[Token], Program] {
       var exprs = parseExprList(SEMICOLON)
       eat(RBRACE)
 
-      MainDecl(id, parent, vars, exprs)
+      MainDecl(id, parent, vars.reverse, exprs.reverse)
     }
 
     def parseClassDecl: ClassDecl = {
@@ -288,7 +288,7 @@ object Parser extends Phase[Iterator[Token], Program] {
       }
       if (main.isEmpty)
         Reporter.fatal("No main declaration")
-      Program(main.get, classes)
+      Program(main.get, classes.reverse)
     }
 
     readToken
