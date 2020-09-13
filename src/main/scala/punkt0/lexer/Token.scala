@@ -1,11 +1,13 @@
 package punkt0
 package lexer
 
+import java.io.Serializable
+
 sealed class Token(val kind: TokenKind) extends Positioned {
   override def toString: String = kind.toString + (if (kind == EOF) "()" else this.posString)
 }
 
-sealed trait TokenKind
+sealed trait TokenKind extends Serializable with Product
 
 case object BAD       extends TokenKind // invalid token
 case object EOF       extends TokenKind
