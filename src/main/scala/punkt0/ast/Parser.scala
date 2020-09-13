@@ -187,10 +187,10 @@ object Parser extends Phase[Iterator[Token], Program] {
         case _ => expected(BAD) // FIXME
       }
 
-      currentToken.kind == DOT match {
-        case true => parseMethodCall(expr)
-        case false => expr
+      while (currentToken.kind == DOT) {
+        expr = parseMethodCall(expr)
       }
+      expr
     }
 
     def parseExpr: ExprTree = parseOperatorExpr(parseExprInner)
