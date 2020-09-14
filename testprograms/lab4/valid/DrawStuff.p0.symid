@@ -1,0 +1,169 @@
+class Drawable#1 {
+  var resX#5: Int = 0;
+  var resY#6: Int = 0;
+
+  def render#7(): String = {
+    var depth#8: Int = 0;
+    var screen#9: String = "";
+    var symb#10: String = "";
+    var x#11: Int = 0;
+    var y#12: Int = 0;
+    screen#9 = "";
+    symb#10 = "?";
+    x#11 = 0;
+    y#12 = 0;
+    resX#5 = 66;
+    resY#6 = 31;
+    while ( (y#12 < resY#6) ) {
+      while ( (x#11 < resX#5) ) {
+        depth#8 = this#1.computePixel#13(x#11, y#12);
+        if ( (depth#8 < 1) ) {
+          symb#10 = " "
+        };
+        if ( (depth#8 == 1) ) {
+          symb#10 = "."
+        };
+        if ( (depth#8 == 2) ) {
+          symb#10 = "o"
+        };
+        if ( (depth#8 == 3) ) {
+          symb#10 = "O"
+        };
+        if ( (depth#8 == 4) ) {
+          symb#10 = "0"
+        };
+        if ( (depth#8 == 5) ) {
+          symb#10 = "@"
+        };
+        if ( (5 < depth#8) ) {
+          symb#10 = "#"
+        };
+        screen#9 = (screen#9 + symb#10);
+        x#11 = (x#11 + 1)
+      };
+      println(screen#9);
+      screen#9 = "";
+      x#11 = 0;
+      y#12 = (y#12 + 1)
+    };
+    println("");
+    println(this#1.getDesc#16());
+    println((((("Resolution: " + resX#5) + " by ") + resY#6) + " characters."));
+    println("");
+    println("");
+    println("");
+    ""
+  }
+
+  def computePixel#13(x#14: Int, y#15: Int): Int = {
+    0
+  }
+
+  def getDesc#16(): String = {
+    ""
+  }
+
+}
+
+class ConcentricCircles#2 extends Drawable#1 {
+
+  override def computePixel#17(xIn#18: Int, yIn#19: Int): Int = {
+    var x#20: Int = 0;
+    var y#21: Int = 0;
+    var x0#22: Int = 0;
+    var y0#23: Int = 0;
+    var iter#24: Int = 0;
+    var maxIter#25: Int = 0;
+    var xTemp#26: Int = 0;
+    resX#5 = 65;
+    resY#6 = 30;
+    x0#22 = ((xIn#18 * 2500) - 15000);
+    y0#23 = ((yIn#19 * 4500) - 15000);
+    iter#24 = (0 - 1);
+    maxIter#25 = 100;
+    while ( ((((x#20 * x#20) + (y#21 * y#21)) < 100000000) && (iter#24 < maxIter#25)) ) {
+      xTemp#26 = (x0#22 + x#20);
+      y#21 = (y0#23 + y#21);
+      x#20 = xTemp#26;
+      iter#24 = (iter#24 + 1)
+    };
+    iter#24
+  }
+
+  override def getDesc#27(): String = {
+    "Concentric circles, giving a representation of successive integer overflows."
+  }
+
+}
+
+class Mandelbrot#3 extends Drawable#1 {
+
+  override def computePixel#28(xIn#29: Int, yIn#30: Int): Int = {
+    var x#31: Int = 0;
+    var y#32: Int = 0;
+    var x0#33: Int = 0;
+    var y0#34: Int = 0;
+    var iter#35: Int = 0;
+    var maxIter#36: Int = 0;
+    var xTemp#37: Int = 0;
+    resX#5 = 70;
+    resY#6 = 40;
+    x0#33 = (((xIn#29 - 25) / 5) - 1);
+    y0#34 = ((yIn#30 - 15) / 3);
+    iter#35 = (0 - 2);
+    maxIter#36 = 1000;
+    while ( ((((x#31 * x#31) + (y#32 * y#32)) < 50) && (iter#35 < maxIter#36)) ) {
+      xTemp#37 = (((x#31 * x#31) - (y#32 * y#32)) + x0#33);
+      y#32 = (((2 * x#31) * y#32) + y0#34);
+      x#31 = xTemp#37;
+      iter#35 = (iter#35 + 1)
+    };
+    iter#35
+  }
+
+  override def getDesc#38(): String = {
+    "Representation of a Mandelbrot set (not so pretty due to rounding)."
+  }
+
+}
+
+class Cross#4 extends Drawable#1 {
+
+  override def computePixel#39(xIn#40: Int, yIn#41: Int): Int = {
+    var x#42: Int = 0;
+    var y#43: Int = 0;
+    var x0#44: Int = 0;
+    var y0#45: Int = 0;
+    var iter#46: Int = 0;
+    var maxIter#47: Int = 0;
+    var xTemp#48: Int = 0;
+    var s#49: Int = 0;
+    s#49 = 13;
+    resX#5 = 50;
+    resY#6 = 30;
+    x0#44 = ((((xIn#40 * 80) * s#49) / resX#5) - (40 * s#49));
+    y0#45 = ((((yIn#41 * 400) * s#49) / resY#6) - (200 * s#49));
+    iter#46 = (0 - 2);
+    maxIter#47 = 10000;
+    while ( ((((y#43 * y#43) - (x#42 * x#42)) < 10000) && (iter#46 < maxIter#47)) ) {
+      xTemp#48 = ((((x#42 * x#42) - (y#43 * y#43)) + x0#44) / 10);
+      y#43 = (((((2 * x#42) * y#43) * x#42) + y0#45) / 100);
+      x#42 = xTemp#48;
+      iter#46 = (iter#46 + 1)
+    };
+    iter#46
+  }
+
+  override def getDesc#50(): String = {
+    "Another cool pattern!"
+  }
+
+}
+
+object Main#51 extends App#?? {
+  {
+    println(new ConcentricCircles#2().render#7());
+    println(new Mandelbrot#3().render#7());
+    println(new Cross#4().render#7())
+  }
+}
