@@ -7,14 +7,14 @@ import lexer._
 
 object Parser extends Phase[Iterator[Token], Program] {
   val opPrecedence = Map(
-    TIMES    -> 1,
-    DIV      -> 2,
-    PLUS     -> 3,
-    MINUS    -> 4,
-    LESSTHAN -> 5,
-    EQUALS   -> 6,
-    AND      -> 7,
-    OR       -> 8,
+    TIMES    -> 6,
+    DIV      -> 6,
+    PLUS     -> 5,
+    MINUS    -> 5,
+    LESSTHAN -> 4,
+    EQUALS   -> 3,
+    AND      -> 2,
+    OR       -> 1,
   )
 
   def run(tokens: Iterator[Token])(ctx: Context): Program = {
@@ -73,51 +73,31 @@ object Parser extends Phase[Iterator[Token], Program] {
       case _ => parseIdentifier
     }
 
-    def parseOperatorExpr(expr: ExprTree): ExprTree = {
-      if (!opPrecedence.contains(currentToken.kind))
-        return expr
+    def parseOperatorExpr(lhs: ExprTree, precedence: Int = 0): ExprTree = {
+      // Algorithm from https://en.wikipedia.org/wiki/Operator-precedence_parser#Pseudocode
+      val op = currentToken.kind
+      if (!opPrecedence.contains(op) || opPrecedence(op) < precedence)
+        return lhs
 
-      // shunting yard algorithm
-      var opStack = List[TokenKind]()
-      var outQueue = List[Either[ExprTree, TokenKind]](Left(expr))
-
-      while (opPrecedence.contains(currentToken.kind)) {
-        val op = currentToken.kind
-        consume(op)
-        while (!opStack.isEmpty && opPrecedence(op) > opPrecedence(opStack(0))) {
-          outQueue = Right(opStack.head) :: outQueue
-          opStack = opStack.tail
-        }
-        opStack = op :: opStack
-        outQueue = Left(parseExprInner) :: outQueue
+      consume(op)
+      var rhs = parsePrimaryExpr
+      while (opPrecedence.get(currentToken.kind).map(_ > opPrecedence(op)).getOrElse(false))
+        rhs = parseOperatorExpr(rhs, opPrecedence(currentToken.kind))
+      val expr = op match {
+        case AND      => And(lhs, rhs)
+        case OR       => Or(lhs, rhs)
+        case EQUALS   => Equals(lhs, rhs)
+        case LESSTHAN => LessThan(lhs, rhs)
+        case PLUS     => Plus(lhs, rhs)
+        case MINUS    => Minus(lhs, rhs)
+        case TIMES    => Times(lhs, rhs)
+        case DIV      => Div(lhs, rhs)
+        case _ => expected(BAD) // impossible
       }
-      outQueue = outQueue ++ opStack.map(Right(_))
-
-      var reversePolishStack = List[ExprTree]()
-
-      outQueue foreach { x => x match {
-        case Left(expr) => reversePolishStack = expr :: reversePolishStack
-        case Right(op) => {
-          val lhs :: rhs :: rest = reversePolishStack
-          val result = op match {
-            case AND      => And(lhs, rhs)
-            case OR       => Or(lhs, rhs)
-            case EQUALS   => Equals(lhs, rhs)
-            case LESSTHAN => LessThan(lhs, rhs)
-            case PLUS     => Plus(lhs, rhs)
-            case MINUS    => Minus(lhs, rhs)
-            case TIMES    => Times(lhs, rhs)
-            case DIV      => Div(lhs, rhs)
-            case _ => expected(BAD) // impossible
-          }
-          reversePolishStack = result :: rest
-        }
-      }}
-
-      reversePolishStack.head
+      parseOperatorExpr(expr, precedence)
     }
 
-    def parseExprInner: ExprTree = {
+    def parsePrimaryExpr: ExprTree = {
       var expr = currentToken.kind match {
         case TRUE =>
           consume(TRUE)
@@ -133,7 +113,7 @@ object Parser extends Phase[Iterator[Token], Program] {
           Null()
         case BANG =>
           consume(BANG)
-          Not(parseExprInner)
+          Not(parsePrimaryExpr)
         case NEW =>
           consume(NEW)
           val id = parseIdentifier
@@ -187,13 +167,12 @@ object Parser extends Phase[Iterator[Token], Program] {
         case _ => expected(BAD) // FIXME
       }
 
-      while (currentToken.kind == DOT) {
+      while (currentToken.kind == DOT)
         expr = parseMethodCall(expr)
-      }
       expr
     }
 
-    def parseExpr: ExprTree = parseOperatorExpr(parseExprInner)
+    def parseExpr: ExprTree = parseOperatorExpr(parsePrimaryExpr)
 
     def parseVarDecl: VarDecl = {
       consume(VAR)
