@@ -99,9 +99,11 @@ object Parser extends Phase[Iterator[Token], Program] {
         case FALSE => consumeAndRet(FALSE, False())
         case THIS  => consumeAndRet(THIS, This())
         case NULL  => consumeAndRet(NULL, Null())
-        case BANG  => consumeAndRet(BANG, Not(parsePrimaryExpr))
         case INTLITKIND => parseIntLiteral
         case STRLITKIND => parseStrLiteral
+        case BANG  =>
+          consume(BANG)
+          Not(parsePrimaryExpr)
         case NEW =>
           consume(NEW)
           val id = parseIdentifier
@@ -133,10 +135,11 @@ object Parser extends Phase[Iterator[Token], Program] {
           val expr = parseExpr
           consume(RPAREN)
           val thenExpr = parseExpr
-          var elseExpr = None: Option[ExprTree]
-          if (currentToken.kind == ELSE) {
-            consume(ELSE)
-            elseExpr = Some(parseExpr)
+          val elseExpr = currentToken.kind == ELSE match {
+            case true  =>
+              consume(ELSE)
+              Some(parseExpr)
+            case false => None
           }
           If(expr, thenExpr, elseExpr)
         case WHILE =>
@@ -228,7 +231,7 @@ object Parser extends Phase[Iterator[Token], Program] {
 
       consume(LBRACE)
       val vars = parseVarDeclList
-      var exprs = parseExprList(SEMICOLON)
+      val exprs = parseExprList(SEMICOLON)
       consume(RBRACE)
 
       MainDecl(id, parent, vars.reverse, exprs.reverse)
@@ -237,13 +240,12 @@ object Parser extends Phase[Iterator[Token], Program] {
     def parseClassDecl: ClassDecl = {
       consume(CLASS)
       val id = parseIdentifier
-      var parent = None: Option[Identifier]
-
-      if (currentToken.kind == EXTENDS) {
-        consume(EXTENDS)
-        parent = Some(parseIdentifier)
+      val parent = currentToken.kind == EXTENDS match {
+        case true =>
+          consume(EXTENDS)
+          Some(parseIdentifier)
+        case false => None
       }
-
       consume(LBRACE)
       val vars = parseVarDeclList
       var methods = List[MethodDecl]()
