@@ -1,7 +1,6 @@
 package punkt0
 package ast
 
-import scala.collection.mutable.Queue
 import Trees._
 import lexer._
 
