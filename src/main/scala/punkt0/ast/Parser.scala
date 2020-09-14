@@ -45,6 +45,11 @@ object Parser extends Phase[Iterator[Token], Program] {
     def parseIntLiteral: IntLit = IntLit(expectedToken(INTLITKIND).asInstanceOf[INTLIT].value)
     def parseStrLiteral: StringLit = StringLit(expectedToken(STRLITKIND).asInstanceOf[STRLIT].value)
 
+    def consumeAndRet[T](kind: TokenKind, t: T): T = {
+      consume(kind)
+      t
+    }
+
     def parseMethodCall(expr: ExprTree): MethodCall = {
       consume(DOT)
       val method = parseIdentifier
@@ -58,18 +63,10 @@ object Parser extends Phase[Iterator[Token], Program] {
     }
 
     def parseType: TypeTree = currentToken.kind match {
-      case BOOLEAN =>
-        consume(BOOLEAN)
-        BooleanType()
-      case INT =>
-        consume(INT)
-        IntType()
-      case STRING =>
-        consume(STRING)
-        StringType()
-      case UNIT =>
-        consume(UNIT)
-        UnitType()
+      case BOOLEAN => consumeAndRet(BOOLEAN, BooleanType())
+      case INT     => consumeAndRet(INT, IntType())
+      case STRING  => consumeAndRet(STRING, StringType())
+      case UNIT    => consumeAndRet(UNIT, UnitType())
       case _ => parseIdentifier
     }
 
@@ -99,21 +96,13 @@ object Parser extends Phase[Iterator[Token], Program] {
 
     def parsePrimaryExpr: ExprTree = {
       var expr = currentToken.kind match {
-        case TRUE =>
-          consume(TRUE)
-          True()
-        case FALSE =>
-          consume(FALSE)
-          False()
-        case THIS =>
-          consume(THIS)
-          This()
-        case NULL =>
-          consume(NULL)
-          Null()
-        case BANG =>
-          consume(BANG)
-          Not(parsePrimaryExpr)
+        case TRUE  => consumeAndRet(TRUE, True())
+        case FALSE => consumeAndRet(FALSE, False())
+        case THIS  => consumeAndRet(THIS, This())
+        case NULL  => consumeAndRet(NULL, Null())
+        case BANG  => consumeAndRet(BANG, Not(parsePrimaryExpr))
+        case INTLITKIND => parseIntLiteral
+        case STRLITKIND => parseStrLiteral
         case NEW =>
           consume(NEW)
           val id = parseIdentifier
@@ -127,8 +116,6 @@ object Parser extends Phase[Iterator[Token], Program] {
               Assign(id, parseExpr)
             case false => id
           }
-        case INTLITKIND => parseIntLiteral
-        case STRLITKIND => parseStrLiteral
         case LPAREN =>
           consume(LPAREN)
           val expr = parseExpr
