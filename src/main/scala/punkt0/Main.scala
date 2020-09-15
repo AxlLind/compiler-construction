@@ -14,7 +14,7 @@ object Main {
         processOptions(args, ctx.copy(doAST = true))
       case "--print" :: args =>
         processOptions(args, ctx.copy(doPrintMain = true))
-      case "--symbols" :: args =>
+      case "--symid" :: args =>
         processOptions(args, ctx.copy(doSymbolIds = true))
       case "--eval" :: args =>
         processOptions(args, ctx.copy(doEval = true))
@@ -33,54 +33,48 @@ object Main {
     println(" --tokens      prints the tokens produced by the lexer")
     println(" --ast         prints the program as an AST")
     println(" --print       prints the program source, derived from the AST")
+    println(" --symid       adds symbol information when printing the AST")
     println(" -d <outdir>   generates class files in the specified directory")
     sys.exit(0)
   }
 
-  def tokens(ctx: Context): Nothing = {
-    val tokens = Lexer.run(ctx.file.get)(ctx)
+  def tokens(f: File, ctx: Context): Unit = {
+    val tokens = Lexer.run(f)(ctx)
     tokens foreach println
     Reporter.terminateIfErrors()
-    sys.exit(0)
   }
 
-  def ast(ctx: Context): Nothing = {
-    val program = Lexer.andThen(Parser).run(ctx.file.get)(ctx)
+  def ast(f: File, ctx: Context): Unit = {
+    val program = Lexer.andThen(Parser).run(f)(ctx)
     println(program)
     Reporter.terminateIfErrors()
-    sys.exit(0)
   }
 
-  def printMain(ctx: Context): Nothing = {
-    val program = Lexer.andThen(Parser).run(ctx.file.get)(ctx)
+  def printMain(f: File, ctx: Context): Unit = {
+    val program = Lexer.andThen(Parser).run(f)(ctx)
     println(Printer.apply(program))
     Reporter.terminateIfErrors()
-    sys.exit(0)
   }
 
-  def eval(ctx: Context): Nothing = {
-    println("Not yet implemented!")
-    Reporter.terminateIfErrors()
-    sys.exit(1)
-  }
+  def eval(f: File, ctx: Context): Unit = ???
 
   def main(args: Array[String]): Unit = {
     val ctx = processOptions(args.toList)
 
-    if (ctx.file.isEmpty) {
-      println("Please provide a source file.")
-      sys.exit(1)
+    val f = ctx.file match {
+      case Some(f) if f.isFile => f
+      case Some(f) =>
+        println(s"Provided file '${f.getName}' not found.")
+        sys.exit(1)
+      case None =>
+        println("Please provide a source file.")
+        sys.exit(1)
     }
 
-    if (!ctx.file.get.isFile) {
-      println(s"Provided file '${ctx.file.get.getName}' not found.")
-      sys.exit(1)
-    }
-
-    if (ctx.doTokens) tokens(ctx)
-    if (ctx.doAST) ast(ctx)
-    if (ctx.doPrintMain) printMain(ctx)
-    if (ctx.doEval) eval(ctx)
+    if (ctx.doTokens) return tokens(f, ctx)
+    if (ctx.doAST) return ast(f, ctx)
+    if (ctx.doPrintMain) return printMain(f, ctx)
+    if (ctx.doEval) return eval(f, ctx)
 
     println("Please provide an option")
     sys.exit(1)
