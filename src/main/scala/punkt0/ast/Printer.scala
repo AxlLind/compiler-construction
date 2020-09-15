@@ -12,8 +12,8 @@ object Printer {
       s"${classes}${apply(p.main, i)}\n"
     case p: MainDecl =>
       val vars = p.vars.map(indented(_,i+1)).mkString("\n") + (if (p.vars.isEmpty) "" else "\n\n")
-      val exprs = p.exprs.map(indented(_, i+1)).mkString("\n") + (if (p.exprs.isEmpty) "" else "\n")
-      s"class ${apply(p.obj)} extends ${apply(p.parent)} {\n${vars}${exprs}${"  " * i}}"
+      val exprs = p.exprs.map(indented(_, i+1)).mkString(";\n") + (if (p.exprs.isEmpty) "" else "\n")
+      s"object ${apply(p.obj)} extends ${apply(p.parent)} {\n${vars}${exprs}${"  " * i}}"
     case p: ClassDecl =>
       val parent = p.parent.map(x => s"extends ${apply(x)} ").getOrElse("")
       val vars = p.vars.map(indented(_,i+1)).mkString("\n") + (if (p.vars.isEmpty) "" else "\n\n")
@@ -23,7 +23,7 @@ object Printer {
       val overrides = if (p.overrides) "override " else ""
       val args = p.args.map(apply(_)).mkString(", ")
       val vars = p.vars.map(indented(_,i+1)).mkString("\n") + (if (p.vars.isEmpty) "" else "\n\n")
-      val exprs = p.exprs.map(indented(_,i+1)).mkString(";\n") + (if (p.exprs.isEmpty) "" else "\n")
+      val exprs = p.exprs.map(indented(_,i+1)).mkString(";\n") + (if (p.exprs.isEmpty) "" else ";\n")
       s"${overrides}def ${apply(p.id)}(${args}): ${apply(p.retType)} = {\n${vars}${exprs}${indented(p.retExpr,i+1)}\n${"  " * i}}"
     case p: MethodCall =>
       val args = p.args.map(apply(_,i)).mkString(", ")
@@ -51,7 +51,7 @@ object Printer {
     case p: Null => "null"
     case p: New => s"new ${apply(p.tpe)}()"
     case p: Not => s"!${apply(p.expr, i)}"
-    case p: Block => s"{\n${p.exprs.map(indented(_, i+1)).mkString("\n")}\n${"  " * i}}"
+    case p: Block => s"{\n${p.exprs.map(indented(_, i+1)).mkString(";\n")}\n${"  " * i}}"
     case p: If => s"if (${apply(p.expr, i)}) ${apply(p.thn, i)}${p.els.map(x => s" else ${apply(x,i)}").getOrElse("")}"
     case p: While => s"while (${apply(p.cond, i)}) ${apply(p.body, i)}"
     case p: Println => s"println(${apply(p.expr, i)})"
