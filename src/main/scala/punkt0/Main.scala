@@ -72,6 +72,11 @@ object Main {
       sys.exit(1)
     }
 
+    if (!ctx.file.get.isFile) {
+      println(s"Provided file '${ctx.file.get.getName}' not found.")
+      sys.exit(1)
+    }
+
     if (ctx.doTokens) tokens(ctx)
     if (ctx.doAST) ast(ctx)
     if (ctx.doPrintMain) printMain(ctx)
