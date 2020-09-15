@@ -6,55 +6,60 @@ import Trees._
 object Printer {
   def indented(t: Tree, i: Int): String = s"${"  " * i}${apply(t, i)}"
 
-  def apply(t: Tree, i: Int = 0): String = t match {
-    case p: Program =>
-      val classes = p.classes.map(apply(_, i)).mkString("\n\n") + (if (p.classes.isEmpty) "" else "\n\n")
-      s"${classes}${apply(p.main, i)}\n"
-    case p: MainDecl =>
-      val vars = p.vars.map(indented(_,i+1)).mkString("\n") + (if (p.vars.isEmpty) "" else "\n\n")
-      val exprs = p.exprs.map(indented(_, i+1)).mkString(";\n") + (if (p.exprs.isEmpty) "" else "\n")
-      s"object ${apply(p.obj)} extends ${apply(p.parent)} {\n${vars}${exprs}${"  " * i}}"
-    case p: ClassDecl =>
-      val parent = p.parent.map(x => s"extends ${apply(x)} ").getOrElse("")
-      val vars = p.vars.map(indented(_,i+1)).mkString("\n") + (if (p.vars.isEmpty) "" else "\n\n")
-      val methods = p.methods.map(indented(_, i+1)).mkString("\n\n") + (if (p.methods.isEmpty) "" else "\n")
-      s"class ${apply(p.id)} ${parent}{\n${vars}${methods}${"  " * i}}"
-    case p: MethodDecl =>
-      val overrides = if (p.overrides) "override " else ""
-      val args = p.args.map(apply(_)).mkString(", ")
-      val vars = p.vars.map(indented(_,i+1)).mkString("\n") + (if (p.vars.isEmpty) "" else "\n\n")
-      val exprs = p.exprs.map(indented(_,i+1)).mkString(";\n") + (if (p.exprs.isEmpty) "" else ";\n")
-      s"${overrides}def ${apply(p.id)}(${args}): ${apply(p.retType)} = {\n${vars}${exprs}${indented(p.retExpr,i+1)}\n${"  " * i}}"
-    case p: MethodCall =>
-      val args = p.args.map(apply(_,i)).mkString(", ")
-      s"${apply(p.obj, i)}.${apply(p.meth)}(${args})"
-    case p: VarDecl => s"var ${apply(p.id)}: ${apply(p.tpe)} = ${apply(p.expr, i)};"
-    case p: Formal => s"${apply(p.id)}: ${apply(p.tpe)}"
-    case p: And => s"(${apply(p.lhs, i)} && ${apply(p.rhs, i)})"
-    case p: Or => s"(${apply(p.lhs, i)} || ${apply(p.rhs, i)})"
-    case p: Plus => s"(${apply(p.lhs, i)} + ${apply(p.rhs, i)})"
-    case p: Minus => s"(${apply(p.lhs, i)} - ${apply(p.rhs, i)})"
-    case p: Times => s"(${apply(p.lhs, i)} * ${apply(p.rhs, i)})"
-    case p: Div => s"(${apply(p.lhs, i)} / ${apply(p.rhs, i)})"
-    case p: LessThan => s"(${apply(p.lhs, i)} < ${apply(p.rhs, i)})"
-    case p: Equals   => s"(${apply(p.lhs, i)} == ${apply(p.rhs, i)})"
-    case p: StringLit => s"${'"'}${p.value}${'"'}"
-    case p: IntLit => p.value.toString
-    case p: Identifier => p.value
-    case p: BooleanType => "Boolean"
-    case p: IntType => "Int"
-    case p: StringType => "String"
-    case p: UnitType => "Unit"
-    case p: True => "true"
-    case p: False => "false"
-    case p: This => "this"
-    case p: Null => "null"
-    case p: New => s"new ${apply(p.tpe)}()"
-    case p: Not => s"!${apply(p.expr, i)}"
-    case p: Block => s"{\n${p.exprs.map(indented(_, i+1)).mkString(";\n")}\n${"  " * i}}"
-    case p: If => s"if (${apply(p.expr, i)}) ${apply(p.thn, i)}${p.els.map(x => s" else ${apply(x,i)}").getOrElse("")}"
-    case p: While => s"while (${apply(p.cond, i)}) ${apply(p.body, i)}"
-    case p: Println => s"println(${apply(p.expr, i)})"
-    case p: Assign => s"${apply(p.id)} = ${apply(p.expr, i)}"
+  def applyArgList(args: List[Tree], i: Int): String =
+    args.map(apply(_, i)).mkString(", ")
+  def applyVarList(vars: List[VarDecl], i: Int): String =
+    vars.map(indented(_, i+1)).mkString("\n") + (if (vars.isEmpty) "" else "\n\n")
+  def applyExprList(exprs: List[ExprTree], i: Int): String =
+    exprs.map(indented(_, i+1)).mkString(";\n") + (if (exprs.isEmpty) "" else "\n")
+  def applyClassList(classes: List[ClassDecl], i: Int): String =
+    classes.map(apply(_, i)).mkString("\n\n") + (if (classes.isEmpty) "" else "\n\n")
+
+  def apply(tree: Tree, i: Int = 0): String = tree match {
+    case t: Program => s"${applyClassList(t.classes, i)}${apply(t.main, i)}\n"
+    case t: MainDecl =>
+      val vars = applyVarList(t.vars, i)
+      val exprs = applyExprList(t.exprs, i)
+      s"object ${apply(t.obj)} extends ${apply(t.parent)} {\n${vars}${exprs}${"  " * i}}"
+    case t: ClassDecl =>
+      val parent = t.parent.map(x => s"extends ${apply(x)} ").getOrElse("")
+      val vars = applyVarList(t.vars, i)
+      val methods = t.methods.map(indented(_, i+1)).mkString("\n\n") + (if (t.methods.isEmpty) "" else "\n")
+      s"class ${apply(t.id)} ${parent}{\n${vars}${methods}${"  " * i}}"
+    case t: MethodDecl =>
+      val overrides = if (t.overrides) "override " else ""
+      val args = applyArgList(t.args, i)
+      val vars = applyVarList(t.vars, i)
+      val exprs = applyExprList(t.exprs ++ List(t.retExpr), i)
+      s"${overrides}def ${apply(t.id)}(${args}): ${apply(t.retType)} = {\n${vars}${exprs}${"  " * i}}"
+    case t: MethodCall => s"${apply(t.obj, i)}.${apply(t.meth)}(${applyArgList(t.args, i)})"
+    case t: VarDecl => s"var ${apply(t.id)}: ${apply(t.tpe)} = ${apply(t.expr, i)};"
+    case t: Formal => s"${apply(t.id)}: ${apply(t.tpe)}"
+    case t: And => s"(${apply(t.lhs, i)} && ${apply(t.rhs, i)})"
+    case t: Or => s"(${apply(t.lhs, i)} || ${apply(t.rhs, i)})"
+    case t: Plus => s"(${apply(t.lhs, i)} + ${apply(t.rhs, i)})"
+    case t: Minus => s"(${apply(t.lhs, i)} - ${apply(t.rhs, i)})"
+    case t: Times => s"(${apply(t.lhs, i)} * ${apply(t.rhs, i)})"
+    case t: Div => s"(${apply(t.lhs, i)} / ${apply(t.rhs, i)})"
+    case t: LessThan => s"(${apply(t.lhs, i)} < ${apply(t.rhs, i)})"
+    case t: Equals   => s"(${apply(t.lhs, i)} == ${apply(t.rhs, i)})"
+    case t: StringLit => s"${'"'}${t.value}${'"'}"
+    case t: IntLit => t.value.toString
+    case t: Identifier => t.value
+    case t: BooleanType => "Boolean"
+    case t: IntType => "Int"
+    case t: StringType => "String"
+    case t: UnitType => "Unit"
+    case t: True => "true"
+    case t: False => "false"
+    case t: This => "this"
+    case t: Null => "null"
+    case t: New => s"new ${apply(t.tpe)}()"
+    case t: Not => s"!${apply(t.expr, i)}"
+    case t: Block => s"{\n${t.exprs.map(indented(_, i+1)).mkString(";\n")}\n${"  " * i}}"
+    case t: If => s"if (${apply(t.expr, i)}) ${apply(t.thn, i)}${t.els.map(x => s" else ${apply(x, i)}").getOrElse("")}"
+    case t: While => s"while (${apply(t.cond, i)}) ${apply(t.body, i)}"
+    case t: Println => s"println(${apply(t.expr, i)})"
+    case t: Assign => s"${apply(t.id)} = ${apply(t.expr, i)}"
   }
 }
