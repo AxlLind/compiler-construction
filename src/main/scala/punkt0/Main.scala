@@ -3,6 +3,7 @@ package punkt0
 import java.io.File
 import lexer._
 import ast._
+import analyzer._
 
 object Main {
   def processOptions(args: List[String], ctx: Context = Context()): Context = {
@@ -51,8 +52,8 @@ object Main {
   }
 
   def printMain(f: File, ctx: Context): Unit = {
-    val program = Lexer.andThen(Parser).run(f)(ctx)
-    println(Printer.apply(program))
+    val program = Lexer.andThen(Parser).andThen(NameAnalysis).run(f)(ctx)
+    println(Printer.asString(program, ctx))
     Reporter.terminateIfErrors()
   }
 
