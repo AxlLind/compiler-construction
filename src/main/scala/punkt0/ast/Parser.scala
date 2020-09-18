@@ -40,13 +40,15 @@ object Parser extends Phase[Iterator[Token], Program] {
       token
     }
 
-    def parseIdentifier: Identifier = Identifier(expectedToken(IDKIND).asInstanceOf[ID].value)
-    def parseIntLiteral: IntLit = IntLit(expectedToken(INTLITKIND).asInstanceOf[INTLIT].value)
-    def parseStrLiteral: StringLit = StringLit(expectedToken(STRLITKIND).asInstanceOf[STRLIT].value)
+    def parseIdentifier: Identifier = {
+      val idToken = expectedToken(IDKIND).asInstanceOf[ID]
+      Identifier(idToken.value).setPos(idToken)
+    }
 
-    def consumeAndRet[T](kind: TokenKind, t: T): T = {
+    def consumeAndRet[T <: Tree](kind: TokenKind, t: T): T = {
+      val startToken = currentToken
       consume(kind)
-      t
+      t.setPos(currentToken)
     }
 
     def parseMethodCall(expr: ExprTree): MethodCall = {
@@ -90,17 +92,19 @@ object Parser extends Phase[Iterator[Token], Program] {
         case DIV      => Div(lhs, rhs)
         case _ => expected(BAD) // impossible
       }
-      parseOperatorExpr(expr, precedence)
+      expr.setPos(lhs)
+      parseOperatorExpr(expr, precedence).setPos(lhs)
     }
 
     def parsePrimaryExpr: ExprTree = {
+      val startToken = currentToken
       var expr = currentToken.kind match {
         case TRUE  => consumeAndRet(TRUE, True())
         case FALSE => consumeAndRet(FALSE, False())
         case THIS  => consumeAndRet(THIS, This())
         case NULL  => consumeAndRet(NULL, Null())
-        case INTLITKIND => parseIntLiteral
-        case STRLITKIND => parseStrLiteral
+        case INTLITKIND => IntLit(expectedToken(INTLITKIND).asInstanceOf[INTLIT].value)
+        case STRLITKIND => StringLit(expectedToken(STRLITKIND).asInstanceOf[STRLIT].value)
         case BANG  =>
           consume(BANG)
           Not(parsePrimaryExpr)
@@ -157,21 +161,26 @@ object Parser extends Phase[Iterator[Token], Program] {
       }
 
       while (currentToken.kind == DOT)
-        expr = parseMethodCall(expr)
-      expr
+        expr = parseMethodCall(expr.setPos(startToken))
+      expr.setPos(startToken)
     }
 
     def parseExpr: ExprTree = parseOperatorExpr(parsePrimaryExpr)
 
     def parseVarDecl: VarDecl = {
+      val startToken = currentToken
       consume(VAR)
       val id = parseIdentifier
       consume(COLON)
       val tpe = parseType
       consume(EQSIGN)
       val expr = parseExpr
+      expr match {
+        case IntLit(_) | StringLit(_) | True() | False() | Null() | New(_) => {}
+        case _ => Reporter.fatal("Variable declaration has to be a literal or a new expression", expr)
+      }
       consume(SEMICOLON)
-      VarDecl(tpe, id, expr)
+      VarDecl(tpe, id, expr).setPos(startToken)
     }
 
     def parseVarDeclList: List[VarDecl] = {
@@ -194,10 +203,11 @@ object Parser extends Phase[Iterator[Token], Program] {
       val id = parseIdentifier
       consume(COLON)
       val tpe = parseType
-      Formal(tpe, id)
+      Formal(tpe, id).setPos(id)
     }
 
     def parseMethodDecl: MethodDecl = {
+      val startToken = currentToken
       val overrides = currentToken.kind == OVERRIDE
       if (overrides)
         consume(OVERRIDE)
@@ -220,10 +230,11 @@ object Parser extends Phase[Iterator[Token], Program] {
       val retExpr::exprs = parseExprList(SEMICOLON)
       consume(RBRACE)
 
-      MethodDecl(overrides, retType, id, args.reverse, vars.reverse, exprs.reverse, retExpr)
+      MethodDecl(overrides, retType, id, args.reverse, vars.reverse, exprs.reverse, retExpr).setPos(startToken)
     }
 
     def parseMainDecl: MainDecl = {
+      val startToken = currentToken
       consume(OBJECT)
       val id = parseIdentifier
       consume(EXTENDS)
@@ -234,10 +245,11 @@ object Parser extends Phase[Iterator[Token], Program] {
       val exprs = parseExprList(SEMICOLON)
       consume(RBRACE)
 
-      MainDecl(id, parent, vars.reverse, exprs.reverse)
+      MainDecl(id, parent, vars.reverse, exprs.reverse).setPos(startToken)
     }
 
     def parseClassDecl: ClassDecl = {
+      val startToken = currentToken
       consume(CLASS)
       val id = parseIdentifier
       val parent = currentToken.kind == EXTENDS match {
@@ -254,10 +266,11 @@ object Parser extends Phase[Iterator[Token], Program] {
 
       consume(RBRACE)
 
-      ClassDecl(id, parent, vars.reverse, methods.reverse)
+      ClassDecl(id, parent, vars.reverse, methods.reverse).setPos(startToken)
     }
 
     def parseProgram: Program = {
+      val startToken = currentToken
       var classes = List[ClassDecl]()
       var main = None: Option[MainDecl]
       while (tokens.hasNext) {
@@ -271,7 +284,7 @@ object Parser extends Phase[Iterator[Token], Program] {
       }
       if (main.isEmpty)
         Reporter.fatal("No main declaration")
-      Program(main.get, classes.reverse)
+      Program(main.get, classes.reverse).setPos(startToken)
     }
 
     readToken
