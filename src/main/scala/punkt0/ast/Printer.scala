@@ -33,7 +33,7 @@ object Printer {
         val methods = t.methods.map(indented(_, i+1)).mkString("\n\n") + (if (t.methods.isEmpty) "" else "\n")
         s"class ${apply(t.id)} ${parent}{\n${vars}${methods}${"  " * i}}"
       case t: MethodDecl =>
-        val overrides = if (t.overrides) s"override${applySymbol(t.getSymbol.overridden)} " else ""
+        val overrides = if (t.overrides) s"override${applySymbol(t.maybeSymbol.flatMap(_.overridden))} " else ""
         val args = applyArgList(t.args, i)
         val vars = applyVarList(t.vars, i)
         val exprs = applyExprList(t.exprs ++ List(t.retExpr), i)

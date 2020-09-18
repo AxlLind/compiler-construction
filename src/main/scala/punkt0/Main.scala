@@ -52,7 +52,11 @@ object Main {
   }
 
   def printMain(f: File, ctx: Context): Unit = {
-    val program = Lexer.andThen(Parser).andThen(NameAnalysis).run(f)(ctx)
+    val runner = ctx.doSymbolIds match {
+      case true => Lexer.andThen(Parser).andThen(NameAnalysis)
+      case false => Lexer.andThen(Parser)
+    }
+    val program = runner.run(f)(ctx)
     Reporter.terminateIfErrors()
     println(Printer.asString(program, ctx))
   }
