@@ -9,48 +9,57 @@ object NameAnalysis extends Phase[Program, Program] {
   def collectSymbols(prog: Program): GlobalScope = {
     def toVarMap(vars: List[VariableSymbol]): Map[String, VariableSymbol] = {
       vars.foldLeft(Map[String, VariableSymbol]()) { (map, v) => {
-        if (map.contains(v.name))
-          Reporter.fatal(s"Duplicate variable name '${v.name}'", v)
+        if (map.contains(v.name)) {
+          Reporter.error(s"Duplicate variable name '${v.name}'", v)
+          return map
+        }
         map + (v.name -> v)
       }}
     }
 
     def toMethodMap(vars: List[MethodSymbol]): Map[String, MethodSymbol] = {
       vars.foldLeft(Map[String, MethodSymbol]()) { (map, v) => {
-        if (map.contains(v.name))
-          Reporter.fatal(s"Duplicate method name '${v.name}'", v)
+        if (map.contains(v.name)) {
+          Reporter.error(s"Duplicate method name '${v.name}'", v)
+          return map
+        }
         map + (v.name -> v)
       }}
     }
 
-    def toClassMap(classes: List[ClassDecl]): Map[String, ClassSymbol] = {
+    def toClassMap(classes: List[ClassSymbol]): Map[String, ClassSymbol] = {
       classes.foldLeft(Map[String, ClassSymbol]()) { (map, c) => {
-        val symbol = c.getSymbol
-        if (map.contains(symbol.name))
-          Reporter.fatal(s"Duplicate class name '${symbol.name}'", symbol)
-        map + (symbol.name -> symbol)
+        if (map.contains(c.name)) {
+          Reporter.error(s"Duplicate class name '${c.name}'", c)
+          return map
+        }
+        map + (c.name -> c)
       }}
     }
 
     def symbolizeVariable(v: VarDecl): VariableSymbol = {
-      val symbol = new VariableSymbol(v.id.value)
+      val symbol = new VariableSymbol(v.id.value).setPos(v)
       v.setSymbol(symbol)
       symbol
     }
 
     def symbolizeFormal(v: Formal): VariableSymbol = {
-      val symbol = new VariableSymbol(v.id.value)
+      val symbol = new VariableSymbol(v.id.value).setPos(v)
       v.setSymbol(symbol)
       symbol
     }
 
     def symbolizeMethod(m: MethodDecl, c: ClassSymbol): MethodSymbol = {
-      var symbol = new MethodSymbol(m.id.value, c)
+      var symbol = new MethodSymbol(m.id.value, c).setPos(m)
       val args = m.args.map(symbolizeFormal(_))
 
       symbol.argList = args
       symbol.params = toVarMap(args)
       symbol.members = toVarMap(m.vars.map(symbolizeVariable(_)))
+
+      symbol.params.keySet
+        .intersect(symbol.members.keySet)
+        .foreach(k => Reporter.error(s"Parameter '$k' redeclared as variable", symbol.members(k)))
 
       m.setSymbol(symbol)
       symbol
@@ -62,16 +71,16 @@ object NameAnalysis extends Phase[Program, Program] {
     }
 
     def symbolizeMain(m: MainDecl) = {
-      m.setSymbol(new ClassSymbol(m.obj.value))
+      m.setSymbol(new ClassSymbol(m.obj.value).setPos(m))
       m.getSymbol.members = toVarMap(m.vars.map(symbolizeVariable(_)))
       // todo m.parent
     }
 
     // symbolize all classes, methods, and vars
     var global = new GlobalScope()
-    prog.classes.foreach(c => c.setSymbol(new ClassSymbol(c.id.value)))
-    prog.classes.foreach(symbolizeClass(_))
-    global.classes = toClassMap(prog.classes)
+    prog.classes.foreach(c => c.setSymbol(new ClassSymbol(c.id.value).setPos(c)))
+    prog.classes.foreach(symbolizeClass)
+    global.classes = toClassMap(prog.classes.map(_.getSymbol))
 
     symbolizeMain(prog.main)
     global.mainClass = prog.main.getSymbol
@@ -80,9 +89,20 @@ object NameAnalysis extends Phase[Program, Program] {
     prog.classes.foreach { c => c.getSymbol.parent = c.parent.flatMap(id => global.lookupClass(id.value)) }
     prog.classes.foreach { c =>
       c.methods.filter(_.overrides).foreach { m =>
-        m.getSymbol.overridden = c.getSymbol.parent.flatMap(_.lookupMethod(m.id.value))
+        m.getSymbol.overridden = c.getSymbol.parent.flatMap(_.lookupMethod(m.id.value) match {
+          case Some(symbol) => Some(symbol)
+          case None =>
+            Reporter.error(s"Method '${m.id.value}' marked as override but the method does not exist in parent", m.getSymbol)
+            None
+        })
       }
     }
+    prog.classes.filter(_.parent.isDefined).foreach { c => {
+      val parent = c.getSymbol.parent.get
+      c.methods.filter(!_.overrides).filter(m => parent.lookupMethod(m.id.value).isDefined).foreach(m =>
+        Reporter.error(s"Method '${m.id.value}' redeclared in child class and not marked as override", m.getSymbol)
+      )
+    }}
 
     global
   }
@@ -112,7 +132,7 @@ object NameAnalysis extends Phase[Program, Program] {
       t.classes.foreach(c => attachSymbols(c, scope.copy(classScope = Some(c.getSymbol))))
     case t: MainDecl =>
       attachSymbols(t.obj, scope)
-      attachSymbols(t.parent, scope)
+      // attachSymbols(t.parent, scope) // todo: should this be looked up?
       t.vars.foreach(attachSymbols(_, scope))
       t.exprs.foreach(attachSymbols(_, scope))
     case t: ClassDecl =>
@@ -129,6 +149,7 @@ object NameAnalysis extends Phase[Program, Program] {
       t.exprs.foreach(attachSymbols(_, scope))
     case t: MethodCall =>
       attachSymbols(t.obj, scope)
+      scope.classScope.get.lookupMethod(t.meth.value).foreach(t.meth.setSymbol(_))
       // attachSymbols(t.meth, scope)
       t.args.foreach(attachSymbols(_, scope))
     case t: VarDecl =>
@@ -178,12 +199,17 @@ object NameAnalysis extends Phase[Program, Program] {
     case t: Println =>
       attachSymbols(t.expr, scope)
     case t: Assign =>
+      if (scope.methodScope.flatMap(_.params.get(t.id.value)).isDefined) {
+        Reporter.error(s"Reassignment of method parameter '${t.id.value}'", t.id)
+      }
       attachSymbols(t.id, scope)
       attachSymbols(t.expr, scope)
     case t: This =>
       t.setSymbol(scope.classScope.get)
-    case t: Identifier =>
-      scope.lookupIdentifier(t.value).foreach(t.setSymbol(_))
+    case t: Identifier => scope.lookupIdentifier(t.value) match {
+      case Some(symbol) => t.setSymbol(symbol)
+      case None => Reporter.error(s"Use of undefined variable '${t.value}'", t)
+    }
     case _ => {}
   }
 

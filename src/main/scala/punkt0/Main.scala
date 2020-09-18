@@ -53,8 +53,8 @@ object Main {
 
   def printMain(f: File, ctx: Context): Unit = {
     val program = Lexer.andThen(Parser).andThen(NameAnalysis).run(f)(ctx)
-    println(Printer.asString(program, ctx))
     Reporter.terminateIfErrors()
+    println(Printer.asString(program, ctx))
   }
 
   def eval(f: File, ctx: Context): Unit = ???
