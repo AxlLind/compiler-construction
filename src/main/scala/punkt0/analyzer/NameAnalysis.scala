@@ -9,7 +9,7 @@ object NameAnalysis extends Phase[Program, Program] {
   def collectSymbols(prog: Program): GlobalScope = {
 
     def checkCyclicInheritance(classes: List[ClassSymbol]) = {
-      var visited = Set[ClassSymbol]()
+      var visited = classes.filter(_.parent.isEmpty).toSet
 
       def visit(c: ClassSymbol, path: List[ClassSymbol]): Unit = {
         if (path.contains(c)) {
