@@ -1,0 +1,183 @@
+/*
+Draw different figures in ASCII using a Drawable class and some maths.
+*/
+class Drawable {
+	// resolution
+	var resX: Int = 0;
+	var resY: Int = 0;
+
+	// render the drawing by getting its pixel value one by one
+	def render(): String = {
+		var depth: Int = 0;
+		var screen: String = "";
+		var symb: String = "";
+		var x: Int = 0;
+		var y: Int = 0;
+		
+		screen = "";
+		symb = "?";
+		x = 0; 	y = 0;
+		
+		// default resolution
+		resX = 66;	resY = 31;
+		
+		while(y < resY) {
+			while(x < resX) {
+				depth = this.computePixel(x, y);
+				
+				if(depth < 1) {symb = " "};
+				if(depth == 1) {symb = "."};
+				if(depth == 2) {symb = "o"};
+				if(depth == 3) {symb = "O"};
+				if(depth == 4) {symb = "0"};
+				if(depth == 5) {symb = "@"};
+				if(5 < depth) {symb = "#"};
+
+				screen = screen + symb;
+				x = x + 1
+			};
+			
+			println(screen);
+			
+			screen = "";
+			x = 0;
+			y = y+1
+		};
+		
+		println("");
+		println(this.getDesc());
+		println("Resolution: " + resX+" by "+resY+" characters.");
+		println("");println("");println("");
+		""
+	}
+	
+	def computePixel(x:Int, y:Int): Int = {
+		/* "abstract" def */
+		0
+	}
+	
+	def getDesc(): String = {
+		/* "abstract" def */
+		""
+	}
+}
+
+// Concentric circles, giving a representation of successive integer overflows.
+class ConcentricCircles extends Drawable {
+	override def computePixel(xIn:Int, yIn:Int): Int = {
+		var x: Int = 0; 
+		var y: Int = 0;
+		var x0: Int = 0;
+		var y0: Int = 0;
+		var iter: Int = 0;
+		var maxIter: Int = 0;
+		var xTemp: Int = 0;
+		
+		resX = 65;
+		resY = 30;
+		
+		// image scaling & centering
+		x0 = xIn*2500 - 15000;
+		y0 = yIn*4500 - 15000;
+		
+		iter = 0-1; 
+		maxIter = 100;
+		
+		while( (x*x + y*y < 100000000) && iter<maxIter) {
+			xTemp = x0 + x;
+			y = y0 + y;
+			x = xTemp;
+			iter = iter + 1
+		};
+		
+		iter
+	}
+	
+	override def getDesc(): String = {
+		"Concentric circles, giving a representation of successive integer overflows."
+	}
+}
+
+// Representation of a Mandelbrot set (not so pretty due to rounding).
+class Mandelbrot extends Drawable {
+	override def computePixel(xIn:Int, yIn:Int): Int = {
+		var x: Int = 0; 
+		var y: Int = 0;
+		// using pseudocode from Wikipedia Mandelbrot page
+		// http://en.wikipedia.org/wiki/Mandelbrot_set
+		
+		var x0: Int = 0;
+		var y0: Int = 0;
+		var iter: Int = 0;
+		var maxIter: Int = 0;
+		var xTemp: Int = 0;
+		
+		resX = 70;
+		resY = 40;
+		
+		// scaling and centering
+		x0 = (xIn-25)/5 - 1;
+		y0 = (yIn-15)/3;
+		
+		iter = 0-2; maxIter = 1000;
+		
+		while( (x*x + y*y < 50) && iter<maxIter) {
+			xTemp = (x*x - y*y + x0);
+			y = (2*x*y + y0);
+			x = xTemp;
+			
+			iter = iter + 1
+		};
+		
+		iter
+	}
+	
+	override def getDesc(): String = {
+		"Representation of a Mandelbrot set (not so pretty due to rounding)."
+	}
+}
+
+// Another cool pattern.
+class Cross extends Drawable {
+	override def computePixel(xIn:Int, yIn:Int): Int = {
+		var x: Int = 0; 
+		var y: Int = 0;
+		var x0: Int = 0;
+		var y0: Int = 0;
+		var iter: Int = 0;
+		var maxIter: Int = 0;
+		var xTemp: Int = 0;
+		var s: Int = 0; //scale
+		s= 13;
+		
+		resX = 50;
+		resY = 30;
+		
+		// scaling and centering
+		 x0 = ((xIn*80*s / resX) - 40*s);
+		 y0 = ((yIn*400*s / resY) - 200*s);
+
+		 iter = 0-2; maxIter = 10000;
+		 
+		 while( (y*y - x*x < 10000) && iter<maxIter) {
+			 xTemp = (x*x - y*y + x0)/10;
+			 y = (2*x*y*x + y0)/100;
+			 x = xTemp;
+			 iter = iter + 1
+		 };
+		
+		iter
+	}
+	
+	override def getDesc(): String = {
+		"Another cool pattern!"
+	}
+}
+
+object Main extends App {
+    {
+        println(new ConcentricCircles().render());
+    	println(new Mandelbrot().render());
+    	println(new Cross().render())
+    }	
+}

@@ -1,0 +1,32 @@
+class DrunkPirate#1 {
+
+  def sing#2(): Boolean = {
+    this#1.verse#3(99);
+    true
+  }
+
+  def verse#3(number#4: Int): Int = {
+    println((((this#1.bottles#5(number#4) + " of beer on the wall, take one down, pass it around, ") + this#1.bottles#5((number#4 - 1))) + " of beer on the wall."));
+    if ( (1 < number#4) ) {
+      this#1.verse#3((number#4 - 1))
+    }
+    else {
+      0
+    }
+  }
+
+  def bottles#5(number#6: Int): String = {
+    if ( (number#6 == 0) ) {
+      "no more bottles"
+    }
+    else {
+      if ( (number#6 == 1) ) "1 bottle"
+      else (number#6 + " bottles")
+    }
+  }
+
+}
+
+object Main#7 extends App#?? {
+  if ( new DrunkPirate#1().sing#2() ) println("Done!")
+}
