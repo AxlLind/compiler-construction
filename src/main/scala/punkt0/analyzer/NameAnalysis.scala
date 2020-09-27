@@ -7,6 +7,26 @@ import Symbols._
 object NameAnalysis extends Phase[Program, Program] {
 
   def collectSymbols(prog: Program): GlobalScope = {
+
+    def checkCyclicInheritance(classes: List[ClassSymbol]) = {
+      var visited = Set[ClassSymbol]()
+
+      def visit(c: ClassSymbol, path: List[ClassSymbol]): Unit = {
+        if (path.contains(c)) {
+          Reporter.error(s"Cyclic inheritance detected with class '${c.name}'", c)
+          return
+        }
+
+        if (visited(c))
+          return
+
+        visited = visited + c
+        c.parent.foreach(visit(_, c :: path))
+      }
+
+      classes.foreach(visit(_, List()))
+    }
+
     def toVarMap(vars: List[VariableSymbol]): Map[String, VariableSymbol] =
       vars.foldLeft(Map[String, VariableSymbol]()) { (map, v) => map.contains(v.name) match {
         case true =>
@@ -97,6 +117,8 @@ object NameAnalysis extends Phase[Program, Program] {
         .filter(m => m.overrides && parent.lookupMethod(m.id.value).isEmpty)
         .foreach(m => Reporter.error(s"Method '${m.id.value}' declared as override but not found in parent class", m.getSymbol))
     }
+
+    checkCyclicInheritance(global.mainClass :: classSymbols)
 
     global
   }
