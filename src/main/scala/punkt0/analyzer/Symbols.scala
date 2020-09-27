@@ -72,4 +72,25 @@ object Symbols {
 
   class VariableSymbol(val name: String) extends Symbol
 
+  case class Scope(
+    globalScope: GlobalScope,
+    classScope: Option[ClassSymbol] = None,
+    methodScope: Option[MethodSymbol] = None,
+  ) {
+    def lookupClass(n: String): Option[ClassSymbol] =
+      globalScope.lookupClass(n)
+
+    def lookupMethod(n: String): Option[MethodSymbol] =
+      classScope.flatMap(_.lookupMethod(n))
+
+    def lookupVar(n: String): Option[VariableSymbol] =
+      methodScope.flatMap(_.lookupVar(n))
+        .orElse(classScope.flatMap(_.lookupVar(n)))
+
+    def lookupIdentifier(n: String): Option[Symbol] =
+      lookupVar(n).orElse(lookupMethod(n)).orElse(lookupClass(n))
+
+    def withClass(c: ClassSymbol): Scope = copy(classScope = Some(c))
+    def withMethod(m: MethodSymbol): Scope = copy(methodScope = Some(m))
+  }
 }
