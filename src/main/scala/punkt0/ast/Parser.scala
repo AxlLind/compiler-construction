@@ -175,10 +175,10 @@ object Parser extends Phase[Iterator[Token], Program] {
       val tpe = parseType
       consume(EQSIGN)
       val expr = parseExpr
-      expr match {
-        case IntLit(_) | StringLit(_) | True() | False() | Null() | New(_) => {}
-        case _ => Reporter.fatal("Variable declaration has to be a literal or a new expression", expr)
-      }
+      // expr match {
+      //   case IntLit(_) | StringLit(_) | True() | False() | Null() | New(_) => {}
+      //   case _ => Reporter.fatal("Variable declaration has to be a literal or a new expression", expr)
+      // }
       consume(SEMICOLON)
       VarDecl(tpe, id, expr).setPos(startToken)
     }
