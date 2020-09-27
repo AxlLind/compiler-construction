@@ -6,25 +6,17 @@ import ast._
 import analyzer._
 
 object Main {
-  def processOptions(args: List[String], ctx: Context = Context()): Context = {
-    args match {
-      case "--help" :: args => displayHelp()
-      case "--tokens" :: args =>
-        processOptions(args, ctx.copy(doTokens = true))
-      case "--ast" :: args =>
-        processOptions(args, ctx.copy(doAST = true))
-      case "--print" :: args =>
-        processOptions(args, ctx.copy(doPrintMain = true))
-      case "--symid" :: args =>
-        processOptions(args, ctx.copy(doSymbolIds = true))
-      case "--eval" :: args =>
-        processOptions(args, ctx.copy(doEval = true))
-      case "-d" :: out :: args =>
-        processOptions(args, ctx.copy(outDir = Some(new File(out))))
-      case f :: args =>
-        processOptions(args, ctx.copy(file = Some(new File(f))))
-      case List() => ctx
-    }
+  def processOptions(args: List[String], ctx: Context = Context()): Context = args match {
+    case "--help"    :: args => displayHelp()
+    case "--tokens"  :: args => processOptions(args, ctx.copy(doTokens = true))
+    case "--ast"     :: args => processOptions(args, ctx.copy(doAST = true))
+    case "--ast+"    :: args => processOptions(args, ctx.copy(doASTPlus = true))
+    case "--print"   :: args => processOptions(args, ctx.copy(doPrintMain = true))
+    case "--symid"   :: args => processOptions(args, ctx.copy(doSymbolIds = true))
+    case "--eval"    :: args => processOptions(args, ctx.copy(doEval = true))
+    case "-d" :: out :: args => processOptions(args, ctx.copy(outDir = Some(new File(out))))
+    case f :: args => processOptions(args, ctx.copy(file = Some(new File(f))))
+    case List() => ctx
   }
 
   def displayHelp(): Nothing = {
@@ -33,6 +25,7 @@ object Main {
     println(" --help        displays this message")
     println(" --tokens      prints the tokens produced by the lexer")
     println(" --ast         prints the program as an AST")
+    println(" --ast+        prints the program as an AST, with type information")
     println(" --print       prints the program source, derived from the AST")
     println(" --symid       adds symbol information when printing the AST")
     println(" -d <outdir>   generates class files in the specified directory")
