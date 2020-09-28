@@ -1,6 +1,7 @@
 package punkt0
 package analyzer
 
+import scala.util.Try
 import Symbols._
 
 object Types {
@@ -10,17 +11,11 @@ object Types {
 
     def setType(tpe: Type): this.type = { _tpe = tpe; this }
     def getType: Type = _tpe
-    def getTypeStr: String = {
-      try getType.toString
-      catch {
-        case t: Throwable => "??"
-      }
-    }
+    def getTypeStr: String = Try(getType.toString).getOrElse("??")
   }
 
   sealed abstract class Type {
     def isSubTypeOf(tpe: Type): Boolean
-    def isPrimitive: Boolean = false
   }
 
   case object TError extends Type {
@@ -35,25 +30,21 @@ object Types {
 
   case object TBoolean extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = tpe == TBoolean
-    override def isPrimitive: Boolean = true
     override def toString = "Boolean"
   }
 
   case object TInt extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = tpe == TInt
-    override def isPrimitive: Boolean = true
     override def toString = "Int"
   }
 
   case object TString extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = tpe == TString
-    override def isPrimitive: Boolean = true
     override def toString = "String"
   }
 
   case object TUnit extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = tpe == TUnit
-    override def isPrimitive: Boolean = true
     override def toString = "Unit"
   }
 
@@ -62,7 +53,6 @@ object Types {
       case TNull | TAnyRef(_) => true
       case _ => false
     }
-    override def isPrimitive: Boolean = true
     override def toString = "Null"
   }
 

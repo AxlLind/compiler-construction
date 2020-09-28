@@ -25,25 +25,25 @@ object TypeChecking extends Phase[Program, Program] {
         case t: Div =>
           tcExpr(t.lhs, TInt)
           tcExpr(t.rhs, TInt)
-        case t: LessThan =>
-          tcExpr(t.lhs, TInt)
-          tcExpr(t.rhs, TInt)
-          TBoolean
         case t: And =>
           tcExpr(t.lhs, TBoolean)
           tcExpr(t.rhs, TBoolean)
         case t: Or =>
           tcExpr(t.lhs, TBoolean)
           tcExpr(t.rhs, TBoolean)
+        case t: LessThan =>
+          tcExpr(t.lhs, TInt)
+          tcExpr(t.rhs, TInt)
+          TBoolean
         case t: Not => tcExpr(t.expr, TBoolean)
         case t: This => t.getSymbol.getType
         case t: New => t.tpe.getType
         case t: Equals =>
           val t1 = tcExpr(t.lhs)
           val t2 = tcExpr(t.rhs)
-          (t1.isPrimitive, t2.isPrimitive, t1 == t2) match {
-            case (true,true,true) => TBoolean
-            case (false,false,_)  => TBoolean
+          (t1,t2) match {
+            case (TAnyRef(_), TAnyRef(_)) => TBoolean
+            case _ if t1 == t2 => TBoolean
             case _ => TError
           }
         case t: Plus =>
@@ -59,25 +59,22 @@ object TypeChecking extends Phase[Program, Program] {
         case t: Block =>
           t.exprs.foreach(tcExpr(_))
           t.exprs.last.getType
-        case t: MethodCall =>
-          // case class MethodCall(obj: ExprTree, meth: Identifier, args: List[ExprTree]) extends ExprTree
-          tcExpr(t.obj) match {
-            case TAnyRef(c) => c.lookupMethod(t.meth.value) match {
-              case Some(m) =>
-                t.meth.setSymbol(m)
-                if (t.args.length != m.argList.length)
-                  Reporter.error(s"Incorrect number of function arguments given to '${t.meth.value}'.", expr)
-                t.args.zip(m.argList) foreach { case (passedArg, arg) => tcExpr(passedArg, arg.getType) }
-                m.retType
-              case None =>
-                Reporter.error(s"Class '${c.name}' has no method '${t.meth.value}'.", expr)
-                TError
-            }
-            case _ =>
-              Reporter.error(s"Method '${t.meth.value}' called on a expression that is not a class.", expr)
+        case t: MethodCall => tcExpr(t.obj) match {
+          case TAnyRef(c) => c.lookupMethod(t.meth.value) match {
+            case Some(m) =>
+              t.meth.setSymbol(m)
+              if (t.args.length != m.argList.length)
+                Reporter.error(s"Incorrect number of function arguments given to '${t.meth.value}'.", expr)
+              t.args.zip(m.argList) foreach { case (passedArg, arg) => tcExpr(passedArg, arg.getType) }
+              m.retType
+            case None =>
+              Reporter.error(s"Class '${c.name}' has no method '${t.meth.value}'.", expr)
               TError
           }
-
+          case _ =>
+            Reporter.error(s"Method '${t.meth.value}' called on a expression that is not a class.", expr)
+            TError
+        }
         case t: If =>
           tcExpr(t.expr, TBoolean)
           val t1 = tcExpr(t.thn)

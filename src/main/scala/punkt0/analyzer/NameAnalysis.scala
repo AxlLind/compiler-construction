@@ -134,7 +134,6 @@ object NameAnalysis extends Phase[Program, Program] {
       t.classes.foreach(c => attachSymbols(scope.withClass(c.getSymbol), c))
     case t: MainDecl =>
       attachSymbols(scope, t.obj)
-      // attachSymbols(scope, t.parent) // todo: should this be looked up?
       t.vars.foreach(attachSymbols(scope, _))
       t.exprs.foreach(attachSymbols(scope, _))
     case t: ClassDecl =>
@@ -152,7 +151,6 @@ object NameAnalysis extends Phase[Program, Program] {
     case t: MethodCall =>
       attachSymbols(scope, t.obj)
       scope.classScope.get.lookupMethod(t.meth.value).foreach(t.meth.setSymbol)
-      // attachSymbols(scope, t.meth) // todo: after type checking?
       t.args.foreach(attachSymbols(scope, _))
     case t: VarDecl =>
       attachSymbols(scope, t.tpe)
