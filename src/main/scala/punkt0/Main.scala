@@ -40,19 +40,19 @@ object Main {
 
   def ast(f: File, ctx: Context): Unit = {
     val program = Lexer.andThen(Parser).run(f)(ctx)
-    println(program)
     Reporter.terminateIfErrors()
+    println(program)
   }
 
   def astPlus(f: File, ctx: Context): Unit = {
     val program = Lexer.andThen(Parser).andThen(NameAnalysis).andThen(TypeChecking).run(f)(ctx)
-    println(TypedASTPrinter.apply(program))
     Reporter.terminateIfErrors()
+    println(TypedASTPrinter.apply(program))
   }
 
   def printMain(f: File, ctx: Context): Unit = {
     val runner = ctx.doSymbolIds match {
-      case true => Lexer.andThen(Parser).andThen(NameAnalysis)
+      case true => Lexer.andThen(Parser).andThen(NameAnalysis).andThen(TypeChecking)
       case false => Lexer.andThen(Parser)
     }
     val program = runner.run(f)(ctx)

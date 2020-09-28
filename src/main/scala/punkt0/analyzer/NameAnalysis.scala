@@ -84,7 +84,8 @@ object NameAnalysis extends Phase[Program, Program] {
       val symbol = new ClassSymbol(m.obj.value).setPos(m)
       symbol.members = toVarMap(m.vars.map(symbolizeVariable))
       m.setSymbol(symbol)
-      // todo m.parent?
+      if (m.parent.value != "App")
+        Reporter.error("Main has to extend 'App'", m)
       symbol
     }
 

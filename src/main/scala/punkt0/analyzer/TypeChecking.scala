@@ -9,6 +9,11 @@ import Types._
 object TypeChecking extends Phase[Program, Program] {
 
   def run(prog: Program)(ctx: Context): Program = {
+    def typeError(msg: String, expr: ExprTree): Type = {
+      Reporter.error(s"Type error. $msg", expr)
+      TError
+    }
+
     def tcExpr(expr: ExprTree, expected: Type*): Type = {
       val tpe: Type = expr match {
         case t: IntLit => TInt
@@ -16,6 +21,7 @@ object TypeChecking extends Phase[Program, Program] {
         case t: True => TBoolean
         case t: False => TBoolean
         case t: Null => TNull
+        case t: Identifier => t.getType
         case t: Minus =>
           tcExpr(t.lhs, TInt)
           tcExpr(t.rhs, TInt)
@@ -42,19 +48,22 @@ object TypeChecking extends Phase[Program, Program] {
           val t1 = tcExpr(t.lhs)
           val t2 = tcExpr(t.rhs)
           (t1,t2) match {
-            case (TAnyRef(_), TAnyRef(_)) => TBoolean
-            case _ if t1 == t2 => TBoolean
-            case _ => TError
+            case (TInt, TInt)
+               | (TUnit, TUnit)
+               | (TString, TString)
+               | (TBoolean, TBoolean)
+               | (TAnyRef(_), TAnyRef(_)) => TBoolean
+            case _ => typeError(s"The equals-operator is not defined for $t1 == $t2", expr)
           }
         case t: Plus =>
           val t1 = tcExpr(t.lhs)
           val t2 = tcExpr(t.rhs)
           (t1,t2) match {
             case (TInt, TInt) => TInt
-            case (TString, TInt) => TString
-            case (TInt, TString) => TString
-            case (TString, TString) => TString
-            case _ => TError
+            case (TInt, TString)
+               | (TString, TInt)
+               | (TString, TString) => TString
+            case _ => typeError(s"The plus-operator is not defined for $t1 + $t2", expr)
           }
         case t: Block =>
           t.exprs.foreach(tcExpr(_))
@@ -67,13 +76,9 @@ object TypeChecking extends Phase[Program, Program] {
                 Reporter.error(s"Incorrect number of function arguments given to '${t.meth.value}'.", expr)
               t.args.zip(m.argList) foreach { case (passedArg, arg) => tcExpr(passedArg, arg.getType) }
               m.retType
-            case None =>
-              Reporter.error(s"Class '${c.name}' has no method '${t.meth.value}'.", expr)
-              TError
+            case None => typeError(s"Class '${c.name}' has no method '${t.meth.value}'.", expr)
           }
-          case _ =>
-            Reporter.error(s"Method '${t.meth.value}' called on a expression that is not a class.", expr)
-            TError
+          case _ => typeError(s"Method '${t.meth.value}' called on a expression that is not a class.", expr)
         }
         case t: If =>
           tcExpr(t.expr, TBoolean)
@@ -82,27 +87,23 @@ object TypeChecking extends Phase[Program, Program] {
           (t1.isSubTypeOf(t2), t2.isSubTypeOf(t1)) match {
             case (true,_) => t1
             case (_,true) => t2
-            case _ =>
-              Reporter.error(s"Type error. Then and Else arms of if-statements do not type match", expr)
-              TUnit
+            case _ => typeError(s"Then and Else arms of if-statements do not type match", expr)
           }
         case t: While =>
           tcExpr(t.cond, TBoolean)
           tcExpr(t.body, TUnit)
-          TUnit
         case t: Println =>
           tcExpr(t.expr, TBoolean, TInt, TString)
           TUnit
         case t: Assign =>
           tcExpr(t.expr, t.id.getType)
           TUnit
-        case t: Identifier => t.getType
       }
 
       expr.setType(tpe)
 
       if (expected.nonEmpty && !expected.exists(tpe.isSubTypeOf)) {
-        Reporter.error(s"Type error. Expected ${expected.toList.mkString(" or ")}, found ${tpe}", expr)
+        typeError(s"Expected ${expected.toList.mkString(" or ")}, found ${tpe}", expr)
         return expected.head
       }
 
