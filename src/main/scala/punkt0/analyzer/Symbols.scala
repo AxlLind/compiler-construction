@@ -62,6 +62,7 @@ object Symbols {
     var params = Map[String, VariableSymbol]()
     var members = Map[String, VariableSymbol]()
     var argList: List[VariableSymbol] = Nil
+    var retType: Type = TError
     var overridden: Option[MethodSymbol] = None
 
     def lookupVar(n: String): Option[VariableSymbol] = {

@@ -15,10 +15,18 @@ object Trees {
   sealed case class Formal(tpe: TypeTree, id: Identifier) extends Tree with Symbolic[VariableSymbol]
 
   sealed trait TypeTree extends Tree with Typed
-  case class BooleanType() extends TypeTree
-  case class IntType() extends TypeTree
-  case class StringType() extends TypeTree
-  case class UnitType() extends TypeTree
+  case class BooleanType() extends TypeTree {
+    override def getType: Type = TBoolean
+  }
+  case class IntType() extends TypeTree {
+    override def getType: Type = TInt
+  }
+  case class StringType() extends TypeTree {
+    override def getType: Type = TString
+  }
+  case class UnitType() extends TypeTree {
+    override def getType: Type = TUnit
+  }
 
   sealed trait ExprTree extends Tree with Typed
   case class And(lhs: ExprTree, rhs: ExprTree) extends ExprTree
@@ -41,14 +49,9 @@ object Trees {
   case class Not(expr: ExprTree) extends ExprTree
   case class Identifier(value: String) extends TypeTree with ExprTree with Symbolic[Symbol] {
     override def getType: Type = getSymbol match {
-      case cs: ClassSymbol =>
-        TAnyRef(cs)
-
-      case ms: MethodSymbol =>
-        sys.error("Requesting type of a method identifier.")
-
-      case vs: VariableSymbol =>
-        vs.getType
+      case c: ClassSymbol => TAnyRef(c)
+      case v: VariableSymbol => v.getType
+      case m: MethodSymbol => sys.error(s"Requesting type of a method identifier '${m.name}'")
     }
     override def setType(tpe: Type) = this
   }

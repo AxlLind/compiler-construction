@@ -30,7 +30,7 @@ object TypedASTPrinter {
         depth = depth + 1
         s += (t match {
             case Program(main, classes)=>
-                "Program(" + apply(main) + "," + handleList(classes) 
+                "Program(" + apply(main) + "," + handleList(classes)
             case MainDecl(obj, parent, vars, exprs)=>
                 "MainDecl(" + apply(obj) + "," + handleList(vars) + "," + handleList(exprs)
             case ClassDecl(id, parent, vars, methods)=>

@@ -3,6 +3,7 @@ package analyzer
 
 import ast.Trees._
 import Symbols._
+import Types._
 
 object NameAnalysis extends Phase[Program, Program] {
 
@@ -38,12 +39,14 @@ object NameAnalysis extends Phase[Program, Program] {
     def symbolizeVariable(v: VarDecl): VariableSymbol = {
       val symbol = new VariableSymbol(v.id.value).setPos(v)
       v.setSymbol(symbol)
+      symbol.setType(v.tpe.getType)
       symbol
     }
 
     def symbolizeFormal(v: Formal): VariableSymbol = {
       val symbol = new VariableSymbol(v.id.value).setPos(v)
       v.setSymbol(symbol)
+      symbol.setType(v.tpe.getType)
       symbol
     }
 
@@ -65,14 +68,16 @@ object NameAnalysis extends Phase[Program, Program] {
     }
 
     def symbolizeClass(c: ClassDecl) = {
-      c.getSymbol.members = toVarMap(c.vars.map(symbolizeVariable))
-      val methodSymbols = c.methods.map(symbolizeMethod(_, c.getSymbol))
-      c.getSymbol.methods = methodSymbols.foldLeft(Map[String, MethodSymbol]()) { (map, v) => map.contains(v.name) match {
+      val symbol = c.getSymbol
+      symbol.members = toVarMap(c.vars.map(symbolizeVariable))
+      val methodSymbols = c.methods.map(symbolizeMethod(_, symbol))
+      symbol.methods = methodSymbols.foldLeft(Map[String, MethodSymbol]()) { (map, v) => map.contains(v.name) match {
         case true =>
           Reporter.error(s"Duplicate method name '${v.name}'", v)
           map
         case false => map + (v.name -> v)
       }}
+      symbol.setType(TAnyRef(symbol))
     }
 
     def symbolizeMain(m: MainDecl): ClassSymbol = {
@@ -211,6 +216,7 @@ object NameAnalysis extends Phase[Program, Program] {
   def run(prog: Program)(ctx: Context): Program = {
     val global = collectSymbols(prog)
     attachSymbols(new Scope(globalScope = global), prog)
+    prog.classes.foreach(_.methods.foreach(m => m.getSymbol.retType = m.retType.getType))
     prog
   }
 
