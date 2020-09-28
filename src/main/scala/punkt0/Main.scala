@@ -44,6 +44,12 @@ object Main {
     Reporter.terminateIfErrors()
   }
 
+  def astPlus(f: File, ctx: Context): Unit = {
+    val program = Lexer.andThen(Parser).andThen(NameAnalysis).andThen(TypeChecking).run(f)(ctx)
+    println(TypedASTPrinter.apply(program))
+    Reporter.terminateIfErrors()
+  }
+
   def printMain(f: File, ctx: Context): Unit = {
     val runner = ctx.doSymbolIds match {
       case true => Lexer.andThen(Parser).andThen(NameAnalysis)
@@ -71,6 +77,7 @@ object Main {
 
     if (ctx.doTokens) return tokens(f, ctx)
     if (ctx.doAST) return ast(f, ctx)
+    if (ctx.doASTPlus) return astPlus(f, ctx)
     if (ctx.doPrintMain) return printMain(f, ctx)
     if (ctx.doEval) return eval(f, ctx)
 
