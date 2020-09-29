@@ -131,8 +131,8 @@ object NameAnalysis extends Phase[Program, Program] {
 
   def attachSymbols(scope: Scope, tree: Tree): Unit = tree match {
     case t: Program =>
-      attachSymbols(scope.withClass(t.main.getSymbol), t.main)
-      t.classes.foreach(c => attachSymbols(scope.withClass(c.getSymbol), c))
+      attachSymbols(scope.including(t.main), t.main)
+      t.classes.foreach(c => attachSymbols(scope.including(c), c))
     case t: MainDecl =>
       attachSymbols(scope, t.obj)
       t.vars.foreach(attachSymbols(scope, _))
@@ -141,7 +141,7 @@ object NameAnalysis extends Phase[Program, Program] {
       attachSymbols(scope, t.id)
       t.parent.foreach(attachSymbols(scope, _))
       t.vars.foreach(attachSymbols(scope, _))
-      t.methods.foreach(m => attachSymbols(scope.withMethod(m.getSymbol), m))
+      t.methods.foreach(m => attachSymbols(scope.including(m), m))
     case t: MethodDecl =>
       attachSymbols(scope, t.retType)
       attachSymbols(scope, t.retExpr)

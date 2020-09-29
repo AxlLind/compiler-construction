@@ -52,10 +52,10 @@ object Symbols {
     var members = Map[String, VariableSymbol]()
 
     def lookupMethod(n: String): Option[MethodSymbol] =
-      methods.get(n).orElse(parent.flatMap(_.lookupMethod(n)))
+      methods.get(n) orElse parent.flatMap(_.lookupMethod(n))
 
     def lookupVar(n: String): Option[VariableSymbol] =
-      members.get(n).orElse(parent.flatMap(_.lookupVar(n)))
+      members.get(n) orElse parent.flatMap(_.lookupVar(n))
   }
 
   class MethodSymbol(val name: String, val classSymbol: ClassSymbol) extends Symbol {
@@ -65,12 +65,8 @@ object Symbols {
     var retType: Type = TError
     var overridden: Option[MethodSymbol] = None
 
-    def lookupVar(n: String): Option[VariableSymbol] = {
-      params.get(n)
-        .orElse(members.get(n))
-        //.orElse(overridden)
-        .orElse(classSymbol.lookupVar(n))
-    }
+    def lookupVar(n: String): Option[VariableSymbol] =
+      params.get(n) orElse members.get(n) orElse classSymbol.lookupVar(n)
   }
 
   class VariableSymbol(val name: String) extends Symbol
@@ -87,13 +83,14 @@ object Symbols {
       classScope.flatMap(_.lookupMethod(n))
 
     def lookupVar(n: String): Option[VariableSymbol] =
-      methodScope.flatMap(_.lookupVar(n))
-        .orElse(classScope.flatMap(_.lookupVar(n)))
+      methodScope.flatMap(_.lookupVar(n)) orElse classScope.flatMap(_.lookupVar(n))
 
     def lookupIdentifier(n: String): Option[Symbol] =
-      lookupVar(n).orElse(lookupMethod(n)).orElse(lookupClass(n))
+      lookupVar(n) orElse lookupMethod(n) orElse lookupClass(n)
 
-    def withClass(c: ClassSymbol): Scope = copy(classScope = Some(c))
-    def withMethod(m: MethodSymbol): Scope = copy(methodScope = Some(m))
+    def including[S <: Symbolic[_ <: Symbol]](s: S): Scope = s.getSymbol match {
+      case c: ClassSymbol => copy(classScope = Some(c))
+      case m: MethodSymbol => copy(methodScope = Some(m))
+    }
   }
 }

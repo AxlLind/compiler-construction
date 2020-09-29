@@ -22,6 +22,9 @@ object TypeChecking extends Phase[Program, Program] {
         case t: False => TBoolean
         case t: Null => TNull
         case t: Identifier => t.getType
+        case t: This => t.getSymbol.getType
+        case t: New => t.tpe.getType
+        case t: Not => tcExpr(t.expr, TBoolean)
         case t: Minus =>
           tcExpr(t.lhs, TInt)
           tcExpr(t.rhs, TInt)
@@ -41,30 +44,30 @@ object TypeChecking extends Phase[Program, Program] {
           tcExpr(t.lhs, TInt)
           tcExpr(t.rhs, TInt)
           TBoolean
-        case t: Not => tcExpr(t.expr, TBoolean)
-        case t: This => t.getSymbol.getType
-        case t: New => t.tpe.getType
-        case t: Equals =>
-          val t1 = tcExpr(t.lhs)
-          val t2 = tcExpr(t.rhs)
-          (t1,t2) match {
-            case (TInt, TInt)
-               | (TUnit, TUnit)
-               | (TString, TString)
-               | (TBoolean, TBoolean)
-               | (TAnyRef(_), TAnyRef(_)) => TBoolean
-            case _ => typeError(s"The equals-operator is not defined for $t1 == $t2", expr)
-          }
-        case t: Plus =>
-          val t1 = tcExpr(t.lhs)
-          val t2 = tcExpr(t.rhs)
-          (t1,t2) match {
-            case (TInt, TInt) => TInt
-            case (TInt, TString)
-               | (TString, TInt)
-               | (TString, TString) => TString
-            case _ => typeError(s"The plus-operator is not defined for $t1 + $t2", expr)
-          }
+        case t: Equals => (tcExpr(t.lhs), tcExpr(t.rhs)) match {
+          case (TInt, TInt)
+             | (TUnit, TUnit)
+             | (TString, TString)
+             | (TBoolean, TBoolean)
+             | (TAnyRef(_), TAnyRef(_)) => TBoolean
+          case (t1,t2) => typeError(s"The equals-operator is not defined for $t1 == $t2", expr)
+        }
+        case t: Plus => (tcExpr(t.lhs), tcExpr(t.rhs)) match {
+          case (TInt, TString)
+             | (TString, TInt)
+             | (TString, TString) => TString
+          case (TInt, TInt) => TInt
+          case (t1,t2) => typeError(s"The plus-operator is not defined for $t1 + $t2", expr)
+        }
+        case t: While =>
+          tcExpr(t.cond, TBoolean)
+          tcExpr(t.body, TUnit)
+        case t: Println =>
+          tcExpr(t.expr, TBoolean, TInt, TString)
+          TUnit
+        case t: Assign =>
+          tcExpr(t.expr, t.id.getType)
+          TUnit
         case t: Block =>
           t.exprs.foreach(tcExpr(_))
           t.exprs.last.getType
@@ -89,15 +92,6 @@ object TypeChecking extends Phase[Program, Program] {
             case (_,true) => t2
             case _ => typeError(s"Then and Else arms of if-statements do not type match", expr)
           }
-        case t: While =>
-          tcExpr(t.cond, TBoolean)
-          tcExpr(t.body, TUnit)
-        case t: Println =>
-          tcExpr(t.expr, TBoolean, TInt, TString)
-          TUnit
-        case t: Assign =>
-          tcExpr(t.expr, t.id.getType)
-          TUnit
       }
 
       expr.setType(tpe)
