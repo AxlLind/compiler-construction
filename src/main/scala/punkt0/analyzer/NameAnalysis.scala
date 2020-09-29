@@ -151,7 +151,6 @@ object NameAnalysis extends Phase[Program, Program] {
       t.exprs.foreach(attachSymbols(scope, _))
     case t: MethodCall =>
       attachSymbols(scope, t.obj)
-      scope.classScope.get.lookupMethod(t.meth.value).foreach(t.meth.setSymbol)
       t.args.foreach(attachSymbols(scope, _))
     case t: VarDecl =>
       attachSymbols(scope, t.tpe)
