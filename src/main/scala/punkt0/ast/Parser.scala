@@ -176,8 +176,8 @@ object Parser extends Phase[Iterator[Token], Program] {
       consume(EQSIGN)
       val expr = parseExpr
       expr match {
-        True() | False() | Null() | IntLit(_) | StringLit(_) | New(_) => {}
-        _ => Reporter.error("Variable initialization has to be a constant or new expression.", expr);
+        case True() | False() | Null() | IntLit(_) | StringLit(_) | New(_) => {}
+        case _ => Reporter.error("Variable initialization has to be a constant or new expression.", expr)
       }
       consume(SEMICOLON)
       VarDecl(tpe, id, expr).setPos(startToken)
