@@ -31,7 +31,7 @@ object NameAnalysis extends Phase[Program, Program] {
     def toVarMap(vars: List[VariableSymbol]): Map[String, VariableSymbol] =
       vars.foldLeft(Map[String, VariableSymbol]()) { (map, v) => map.contains(v.name) match {
         case true =>
-          Reporter.error(s"Duplicate variable name '${v.name}'", v)
+          Reporter.error(s"Variable '${v.name}' is already defined", v)
           map
         case false => map + (v.name -> v)
       }}
@@ -94,7 +94,7 @@ object NameAnalysis extends Phase[Program, Program] {
       .map(c => c.setSymbol(new ClassSymbol(c.id.value)).getSymbol.setPos(c))
       .foldLeft(Map[String, ClassSymbol]()) { (map, c) => map.contains(c.name) match {
         case true =>
-          Reporter.error(s"Duplicate class name '${c.name}'", c)
+          Reporter.error(s"Multiple definitions of class '${c.name}'", c)
           map
         case false => map + (c.name -> c)
       }}
@@ -111,22 +111,22 @@ object NameAnalysis extends Phase[Program, Program] {
     // link overridden methods
     prog.classes.foreach { c => c.methods.filter(_.overrides).foreach { m =>
       m.getSymbol.overridden = c.getSymbol.parent.flatMap(_.lookupMethod(m.id.value))
-      if (m.getSymbol.overridden.isEmpty)
-        Reporter.error(s"Method '${m.id.value}' marked as override but the method does not exist in parent", m.getSymbol)
     }}
 
-    // find methods with duplicate names in parent, not marked as override
-    // and methods marked as override, with no corresponding method in the parent
-    prog.classes.filter(_.getSymbol.parent.isDefined).foreach { c =>
-      val parent = c.getSymbol.parent.get
-      c.methods
-        .filter(m => !m.overrides && parent.lookupMethod(m.id.value).isDefined)
-        .foreach(m => Reporter.error(s"Method '${m.id.value}' redeclared in child class and not marked as override", m.getSymbol))
-      c.methods
-        .filter(m => m.overrides && parent.lookupMethod(m.id.value).isEmpty)
-        .foreach(m => Reporter.error(s"Method '${m.id.value}' declared as override but not found in parent class", m.getSymbol))
+    // check override constraints
+    prog.classes.filter(_.getSymbol.parent.isDefined) foreach { c =>
+      c.methods foreach { m => (c.getSymbol.parent.get.lookupMethod(m.id.value), m.overrides) match {
+        case (Some(parentMethod), true) =>
+          if (parentMethod.argList.length != m.args.length)
+            Reporter.error("Overridden method needs to have the same number of arguments.", m)
+          m.getSymbol.overridden = Some(parentMethod)
+        case (Some(parentMethod), false) =>
+          if (parentMethod.argList.length == m.args.length)
+            Reporter.error("Method matches a parent method but is not declared as override.", m)
+        case (None, true) => Reporter.error("Method marked as override but parent has no corresponding method", m)
+        case (None, false) => {}
+      }}
     }
-
 
     global
   }
