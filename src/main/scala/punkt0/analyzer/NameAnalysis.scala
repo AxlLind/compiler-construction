@@ -39,14 +39,12 @@ object NameAnalysis extends Phase[Program, Program] {
     def symbolizeVariable(v: VarDecl): VariableSymbol = {
       val symbol = new VariableSymbol(v.id.value).setPos(v)
       v.setSymbol(symbol)
-      symbol.setType(v.tpe.getType)
       symbol
     }
 
     def symbolizeFormal(v: Formal): VariableSymbol = {
       val symbol = new VariableSymbol(v.id.value).setPos(v)
       v.setSymbol(symbol)
-      symbol.setType(v.tpe.getType)
       symbol
     }
 
@@ -208,7 +206,10 @@ object NameAnalysis extends Phase[Program, Program] {
     case t: This => t.setSymbol(scope.classScope.get)
     case t: Identifier => scope.lookupIdentifier(t.value) match {
       case Some(symbol) => t.setSymbol(symbol)
-      case None => Reporter.error(s"Reference to undefined identifier '${t.value}'", t)
+      case None =>
+        // so that other calls do not fail, we exit anyway
+        t.setSymbol(new VariableSymbol("undefined"))
+        Reporter.error(s"Reference to undefined identifier.", t)
     }
     case _ => {}
   }
@@ -216,7 +217,7 @@ object NameAnalysis extends Phase[Program, Program] {
   def run(prog: Program)(ctx: Context): Program = {
     val global = collectSymbols(prog)
     attachSymbols(new Scope(globalScope = global), prog)
-    prog.classes.foreach(_.methods.foreach(m => m.getSymbol.retType = m.retType.getType))
+    prog.classes.foreach(_.methods foreach { m => m.getSymbol.retType = m.retType.getType })
     prog
   }
 

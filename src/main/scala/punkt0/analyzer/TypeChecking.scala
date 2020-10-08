@@ -104,11 +104,15 @@ object TypeChecking extends Phase[Program, Program] {
       tpe
     }
 
-    def tcVarDecl(v: VarDecl) = tcExpr(v.expr, v.tpe.getType)
+    def tcVarDecl(v: VarDecl) = {
+      v.getSymbol.setType(v.tpe.getType)
+      tcExpr(v.expr, v.tpe.getType)
+    }
 
     prog.classes.foreach(c => {
       c.vars.foreach(tcVarDecl)
       c.methods.foreach(m => {
+        m.args.foreach(a => a.getSymbol.setType(a.tpe.getType))
         m.vars.foreach(tcVarDecl)
         m.exprs.foreach(tcExpr(_))
         tcExpr(m.retExpr, m.retType.getType)
