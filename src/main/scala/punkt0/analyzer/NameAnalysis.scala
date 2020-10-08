@@ -124,8 +124,9 @@ object NameAnalysis extends Phase[Program, Program] {
           if (parentMethod.argList.length != m.args.length)
             Reporter.error("Overridden method needs to have the same number of arguments.", m)
           m.getSymbol.overridden = Some(parentMethod)
+        case (Some(parentMethod), false) => Reporter.error("Method matches a parent method but is not declared as override.", m)
         case (None, true) => Reporter.error("Method marked as override but parent has no corresponding method", m)
-        case (_, false) => {}
+        case (None, false) => {}
       }}
     }
 
