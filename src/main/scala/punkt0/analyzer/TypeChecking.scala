@@ -9,6 +9,16 @@ import Types._
 object TypeChecking extends Phase[Program, Program] {
 
   def run(prog: Program)(ctx: Context): Program = {
+    def typeLCA(t1: Type, t2: Type): Option[TAnyRef] = {
+      def typePath(t: TAnyRef, path: List[TAnyRef] = List()): List[TAnyRef] =
+        t.classSymbol.parent.map(parent => typePath(TAnyRef(parent), t :: path)) getOrElse t::path
+
+      val path1 = typePath(t1.asInstanceOf[TAnyRef])
+      val path2 = typePath(t2.asInstanceOf[TAnyRef])
+
+      path1.zip(path2).takeWhile({ case (a,b) => a == b }).headOption.map(_._1)
+    }
+
     def typeError(msg: String, expr: ExprTree): Type = {
       Reporter.error(s"Type error. $msg", expr)
       TError
@@ -45,25 +55,23 @@ object TypeChecking extends Phase[Program, Program] {
           tcExpr(t.rhs, TInt)
           TBoolean
         case t: Equals => (tcExpr(t.lhs), tcExpr(t.rhs)) match {
-          case (TInt, TInt)
-             | (TUnit, TUnit)
-             | (TString, TString)
-             | (TBoolean, TBoolean)
-             | (TAnyRef(_), TAnyRef(_)) => TBoolean
+          case (TAnyRef(_), TAnyRef(_)) => TBoolean
+          case (t1,t2) if t1.isSubTypeOf(t2) => TBoolean
+          case (t1,t2) if t2.isSubTypeOf(t1) => TBoolean
           case (t1,t2) => typeError(s"The equals-operator is not defined for $t1 == $t2", expr)
         }
         case t: Plus => (tcExpr(t.lhs), tcExpr(t.rhs)) match {
+          case (TInt, TInt) => TInt
           case (TInt, TString)
              | (TString, TInt)
              | (TString, TString) => TString
-          case (TInt, TInt) => TInt
           case (t1,t2) => typeError(s"The plus-operator is not defined for $t1 + $t2", expr)
         }
         case t: While =>
           tcExpr(t.cond, TBoolean)
           tcExpr(t.body, TUnit)
         case t: Println =>
-          tcExpr(t.expr, TBoolean, TInt, TString)
+          tcExpr(t.expr, TString, TInt, TBoolean)
           TUnit
         case t: Assign =>
           tcExpr(t.expr, t.id.getType)
@@ -85,12 +93,19 @@ object TypeChecking extends Phase[Program, Program] {
         }
         case t: If =>
           tcExpr(t.expr, TBoolean)
-          val t1 = tcExpr(t.thn)
-          val t2 = t.els.map(tcExpr(_)).getOrElse(TUnit)
-          (t1.isSubTypeOf(t2), t2.isSubTypeOf(t1)) match {
-            case (true,_) => t2
-            case (_,true) => t1
-            case _ => typeError("Then and Else arms of if-statements do not type match.", expr)
+          t.els match {
+            case Some(elseExpr) =>
+              val t1 = tcExpr(t.thn)
+              val t2 = tcExpr(elseExpr)
+              (t1,t2) match {
+                case (t1,t2) if t1.isSubTypeOf(t2) => t2
+                case (t1,t2) if t2.isSubTypeOf(t1) => t1
+                case (TAnyRef(_), TAnyRef(_)) =>
+                  typeLCA(t1, t2) getOrElse
+                    typeError("Arms of if-statements do not type match", expr)
+                case _ => typeError("Arms of if-statement do not type match", expr)
+              }
+            case None => tcExpr(t.thn, TUnit)
           }
       }
 
@@ -111,6 +126,12 @@ object TypeChecking extends Phase[Program, Program] {
 
     // set the type of all method arguments
     prog.classes.flatMap(_.methods).flatMap(_.args) foreach { arg => arg.getSymbol.setType(arg.tpe.getType) }
+    prog.classes.flatMap(_.methods.filter(_.overrides)) foreach { m =>
+      m.args.zip(m.getSymbol.overridden.get.argList) foreach { case (arg, parentArg) =>
+        if (!arg.tpe.getType.isSubTypeOf(parentArg.getType))
+          Reporter.error("Function argument does not type match with the overridden method", arg);
+      }
+    }
 
     // set the type of all fields
     prog.classes.flatMap(_.vars) foreach tcVarDecl
