@@ -88,9 +88,9 @@ object TypeChecking extends Phase[Program, Program] {
           val t1 = tcExpr(t.thn)
           val t2 = t.els.map(tcExpr(_)).getOrElse(TUnit)
           (t1.isSubTypeOf(t2), t2.isSubTypeOf(t1)) match {
-            case (true,_) => t1
-            case (_,true) => t2
-            case _ => typeError(s"Then and Else arms of if-statements do not type match", expr)
+            case (true,_) => t2
+            case (_,true) => t1
+            case _ => typeError("Then and Else arms of if-statements do not type match.", expr)
           }
       }
 
@@ -106,7 +106,7 @@ object TypeChecking extends Phase[Program, Program] {
 
     def tcVarDecl(v: VarDecl) = {
       v.getSymbol.setType(v.tpe.getType)
-      tcExpr(v.expr, v.tpe.getType)
+      tcExpr(v.expr, v.getSymbol.getType)
     }
 
     // set the type of all method arguments

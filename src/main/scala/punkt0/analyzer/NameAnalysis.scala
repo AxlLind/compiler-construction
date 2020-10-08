@@ -88,7 +88,6 @@ object NameAnalysis extends Phase[Program, Program] {
     }
 
     var global = new GlobalScope()
-    global.mainClass = symbolizeMain(prog.main)
 
     // create class symbols and check for duplicate class definitions
     global.classes = prog.classes
@@ -100,6 +99,8 @@ object NameAnalysis extends Phase[Program, Program] {
         case false => map + (c.name -> c)
       }}
     prog.classes.foreach(symbolizeClass)
+
+    global.mainClass = symbolizeMain(prog.main)
 
     // link parent classes
     prog.classes
@@ -125,6 +126,7 @@ object NameAnalysis extends Phase[Program, Program] {
         .filter(m => m.overrides && parent.lookupMethod(m.id.value).isEmpty)
         .foreach(m => Reporter.error(s"Method '${m.id.value}' declared as override but not found in parent class", m.getSymbol))
     }
+
 
     global
   }
