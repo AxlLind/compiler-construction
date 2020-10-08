@@ -9,13 +9,13 @@ object NameAnalysis extends Phase[Program, Program] {
 
   def collectSymbols(prog: Program): GlobalScope = {
 
-    def checkCyclicInheritance(classes: List[ClassSymbol]) = {
-      var visited = classes.filter(_.parent.isEmpty).toSet
+    def checkCyclicInheritance(classes: List[ClassDecl]) = {
+      var visited = Set[ClassSymbol]()
 
       def visit(c: ClassSymbol, path: List[ClassSymbol]): Unit = {
         if (path.contains(c)) {
-          Reporter.error(s"Cyclic inheritance detected with class '${c.name}'", c)
-          return
+          val cyclePath = (path.reverse.dropWhile(_ != c) ::: List(c)).map(_.name).mkString(" -> ")
+          Reporter.fatal(s"Cyclic inheritance detected: ${cyclePath}", c)
         }
 
         if (visited(c))
@@ -25,7 +25,7 @@ object NameAnalysis extends Phase[Program, Program] {
         c.parent.foreach(visit(_, c :: path))
       }
 
-      classes.foreach(visit(_, List()))
+      classes.map(_.getSymbol).foreach(visit(_, List()))
     }
 
     def toVarMap(vars: List[VariableSymbol]): Map[String, VariableSymbol] =
@@ -89,21 +89,25 @@ object NameAnalysis extends Phase[Program, Program] {
       symbol
     }
 
-    // symbolize all classes, methods, and vars
     var global = new GlobalScope()
-    val classSymbols = prog.classes.map(c => c.setSymbol(new ClassSymbol(c.id.value)).getSymbol.setPos(c))
-    prog.classes.foreach(symbolizeClass)
     global.mainClass = symbolizeMain(prog.main)
 
-    global.classes = classSymbols.foldLeft(Map[String, ClassSymbol]()) { (map, c) => map.contains(c.name) match {
-      case true =>
-        Reporter.error(s"Duplicate class name '${c.name}'", c)
-        map
-      case false => map + (c.name -> c)
-    }}
+    // create class symbols and check for duplicate class definitions
+    global.classes = prog.classes
+      .map(c => c.setSymbol(new ClassSymbol(c.id.value)).getSymbol.setPos(c))
+      .foldLeft(Map[String, ClassSymbol]()) { (map, c) => map.contains(c.name) match {
+        case true =>
+          Reporter.error(s"Duplicate class name '${c.name}'", c)
+          map
+        case false => map + (c.name -> c)
+      }}
+    prog.classes.foreach(symbolizeClass)
 
     // link parent classes
-    prog.classes.foreach { c => c.getSymbol.parent = c.parent.flatMap(id => global.lookupClass(id.value)) }
+    prog.classes
+      .filter(_.parent.isDefined)
+      .foreach { c => c.getSymbol.parent = global.lookupClass(c.parent.get.value) }
+    checkCyclicInheritance(prog.classes)
 
     // link overridden methods
     prog.classes.foreach { c => c.methods.filter(_.overrides).foreach { m =>
@@ -114,7 +118,7 @@ object NameAnalysis extends Phase[Program, Program] {
 
     // find methods with duplicate names in parent, not marked as override
     // and methods marked as override, with no corresponding method in the parent
-    prog.classes.filter(_.parent.isDefined).foreach { c =>
+    prog.classes.filter(_.getSymbol.parent.isDefined).foreach { c =>
       val parent = c.getSymbol.parent.get
       c.methods
         .filter(m => !m.overrides && parent.lookupMethod(m.id.value).isDefined)
@@ -123,8 +127,6 @@ object NameAnalysis extends Phase[Program, Program] {
         .filter(m => m.overrides && parent.lookupMethod(m.id.value).isEmpty)
         .foreach(m => Reporter.error(s"Method '${m.id.value}' declared as override but not found in parent class", m.getSymbol))
     }
-
-    checkCyclicInheritance(global.mainClass :: classSymbols)
 
     global
   }
@@ -206,7 +208,7 @@ object NameAnalysis extends Phase[Program, Program] {
     case t: This => t.setSymbol(scope.classScope.get)
     case t: Identifier => scope.lookupIdentifier(t.value) match {
       case Some(symbol) => t.setSymbol(symbol)
-      case None => Reporter.error(s"Use of undefined variable '${t.value}'", t)
+      case None => Reporter.error(s"Reference to undefined identifier '${t.value}'", t)
     }
     case _ => {}
   }
