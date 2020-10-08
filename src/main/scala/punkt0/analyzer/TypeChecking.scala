@@ -109,17 +109,22 @@ object TypeChecking extends Phase[Program, Program] {
       tcExpr(v.expr, v.tpe.getType)
     }
 
-    prog.classes.foreach(c => {
-      c.vars.foreach(tcVarDecl)
-      c.methods.foreach(m => {
-        m.args.foreach(a => a.getSymbol.setType(a.tpe.getType))
-        m.vars.foreach(tcVarDecl)
-        m.exprs.foreach(tcExpr(_))
-        tcExpr(m.retExpr, m.retType.getType)
-      })
-    })
-    prog.main.vars.foreach(tcVarDecl)
-    prog.main.exprs.foreach(tcExpr(_))
+    // set the type of all method arguments
+    prog.classes.flatMap(_.methods).flatMap(_.args) foreach { arg => arg.getSymbol.setType(arg.tpe.getType) }
+
+    // set the type of all fields
+    prog.classes.flatMap(_.vars) foreach tcVarDecl
+
+    // type check all methods
+    prog.classes.flatMap(_.methods) foreach { m =>
+      m.vars.foreach(tcVarDecl)
+      m.exprs.foreach(tcExpr(_))
+      tcExpr(m.retExpr, m.retType.getType)
+    }
+
+    // lastly, type check main and it's variables
+    prog.main.vars foreach tcVarDecl
+    prog.main.exprs foreach { tcExpr(_) }
 
     prog
   }

@@ -208,7 +208,7 @@ object NameAnalysis extends Phase[Program, Program] {
       case Some(symbol) => t.setSymbol(symbol)
       case None =>
         // so that other calls do not fail, we exit anyway
-        t.setSymbol(new VariableSymbol("undefined"))
+        t.setSymbol(new VariableSymbol("[undefined]"))
         Reporter.error(s"Reference to undefined identifier.", t)
     }
     case _ => {}
