@@ -108,6 +108,12 @@ object NameAnalysis extends Phase[Program, Program] {
       .foreach { c => c.getSymbol.parent = global.lookupClass(c.parent.get.value) }
     checkCyclicInheritance(prog.classes)
 
+    // check that fields don't override
+    prog.classes.filter(_.getSymbol.parent.isDefined) foreach { c =>
+      val parent = c.getSymbol.parent.get
+      c.vars.filter(v => parent.lookupVar(v.id.value).isDefined) foreach { Reporter.error("Field overrides parent field", _) }
+    }
+
     // link overridden methods
     prog.classes.foreach { c => c.methods.filter(_.overrides).foreach { m =>
       m.getSymbol.overridden = c.getSymbol.parent.flatMap(_.lookupMethod(m.id.value))
