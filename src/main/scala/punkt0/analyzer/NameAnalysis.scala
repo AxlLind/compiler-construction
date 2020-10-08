@@ -87,7 +87,7 @@ object NameAnalysis extends Phase[Program, Program] {
       symbol
     }
 
-    var global = new GlobalScope()
+    val global = new GlobalScope()
 
     // create class symbols and check for duplicate class definitions
     global.classes = prog.classes
@@ -103,9 +103,7 @@ object NameAnalysis extends Phase[Program, Program] {
     global.mainClass = symbolizeMain(prog.main)
 
     // link parent classes
-    prog.classes
-      .filter(_.parent.isDefined)
-      .foreach { c => c.getSymbol.parent = global.lookupClass(c.parent.get.value) }
+    prog.classes.filter(_.parent.isDefined) foreach { c => c.getSymbol.parent = global.lookupClass(c.parent.get.value) }
     checkCyclicInheritance(prog.classes)
 
     // check that fields don't override
@@ -126,11 +124,8 @@ object NameAnalysis extends Phase[Program, Program] {
           if (parentMethod.argList.length != m.args.length)
             Reporter.error("Overridden method needs to have the same number of arguments.", m)
           m.getSymbol.overridden = Some(parentMethod)
-        case (Some(parentMethod), false) =>
-          if (parentMethod.argList.length == m.args.length)
-            Reporter.error("Method matches a parent method but is not declared as override.", m)
         case (None, true) => Reporter.error("Method marked as override but parent has no corresponding method", m)
-        case (None, false) => {}
+        case (_, false) => {}
       }}
     }
 
