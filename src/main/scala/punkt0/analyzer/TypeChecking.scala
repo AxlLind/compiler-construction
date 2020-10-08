@@ -16,7 +16,7 @@ object TypeChecking extends Phase[Program, Program] {
       val path1 = typePath(t1.asInstanceOf[TAnyRef])
       val path2 = typePath(t2.asInstanceOf[TAnyRef])
 
-      path1.zip(path2).takeWhile({ case (a,b) => a == b }).headOption.map(_._1)
+      path1.zip(path2).takeWhile({ case (a,b) => a == b }).lastOption.map(_._1)
     }
 
     def typeError(msg: String, expr: ExprTree): Type = {
@@ -44,16 +44,16 @@ object TypeChecking extends Phase[Program, Program] {
         case t: Div =>
           tcExpr(t.lhs, TInt)
           tcExpr(t.rhs, TInt)
+        case t: LessThan =>
+          tcExpr(t.lhs, TInt)
+          tcExpr(t.rhs, TInt)
+          TBoolean
         case t: And =>
           tcExpr(t.lhs, TBoolean)
           tcExpr(t.rhs, TBoolean)
         case t: Or =>
           tcExpr(t.lhs, TBoolean)
           tcExpr(t.rhs, TBoolean)
-        case t: LessThan =>
-          tcExpr(t.lhs, TInt)
-          tcExpr(t.rhs, TInt)
-          TBoolean
         case t: Equals => (tcExpr(t.lhs), tcExpr(t.rhs)) match {
           case (TAnyRef(_), TAnyRef(_)) => TBoolean
           case (t1,t2) if t1.isSubTypeOf(t2) => TBoolean
@@ -78,7 +78,7 @@ object TypeChecking extends Phase[Program, Program] {
           TUnit
         case t: Block =>
           t.exprs.foreach(tcExpr(_))
-          t.exprs.last.getType
+          t.exprs.lastOption.map(_.getType) getOrElse TUnit
         case t: MethodCall => tcExpr(t.obj) match {
           case TAnyRef(c) => c.lookupMethod(t.meth.value) match {
             case Some(m) =>
@@ -100,9 +100,7 @@ object TypeChecking extends Phase[Program, Program] {
               (t1,t2) match {
                 case (t1,t2) if t1.isSubTypeOf(t2) => t2
                 case (t1,t2) if t2.isSubTypeOf(t1) => t1
-                case (TAnyRef(_), TAnyRef(_)) =>
-                  typeLCA(t1, t2) getOrElse
-                    typeError("Arms of if-statements do not type match", expr)
+                case (TAnyRef(_), TAnyRef(_)) => typeLCA(t1, t2) getOrElse typeError("Arms of if-statements do not type match", expr)
                 case _ => typeError("Arms of if-statement do not type match", expr)
               }
             case None => tcExpr(t.thn, TUnit)
