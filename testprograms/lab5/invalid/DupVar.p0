@@ -1,0 +1,6 @@
+object Main extends App {
+ var a : Int = 0;
+ var b : Int = 0;
+ var a : Int = 1;
+ println(a+b+a)
+}

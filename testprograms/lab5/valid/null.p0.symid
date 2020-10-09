@@ -1,0 +1,17 @@
+class A#1 {
+  
+  def foo#2(value#3: Boolean): A#1 = {
+    if ( value#3 ) {
+      this#1
+    }
+    else {
+      null
+    }
+  }
+
+}
+
+object Main#4 extends App#?? {
+  var a#6: A#1 = new A#1();
+  println((a#6.foo#2(true) == a#6))
+}

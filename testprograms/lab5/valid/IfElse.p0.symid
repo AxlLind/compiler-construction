@@ -1,0 +1,11 @@
+class A#1 {
+  
+
+}
+
+object Main#2 extends App#?? {
+  var x#4: A#1 = null;
+  x#4 = if ( true ) new A#1()
+  else new A#1();
+  println("test")
+}

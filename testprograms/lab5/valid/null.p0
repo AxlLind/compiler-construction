@@ -1,0 +1,14 @@
+class A {
+  def foo(value:Boolean): A = {
+    if (value) {
+        this
+    } else {
+        null
+    }
+  }
+}
+
+object Main extends App {
+  var a:A = new A();
+  println(a.foo(true) == a)
+}

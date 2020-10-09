@@ -1,0 +1,8 @@
+class A {
+}
+
+object Main extends App {
+  var x : A = null;
+  x = if (true) new A() else new A();
+  println("test")
+}

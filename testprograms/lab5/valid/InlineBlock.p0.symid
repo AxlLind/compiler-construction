@@ -1,0 +1,8 @@
+
+
+object Main#1 extends App#?? {
+  println({
+    3;
+    "string"
+  })
+}

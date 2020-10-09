@@ -1,0 +1,34 @@
+
+
+object Main#1 extends App#?? {
+  var x#3: Int = 0;
+  x#3 = 0;
+  if ( (false && {
+    x#3 = (x#3 + 1);
+    true
+  }) ) {
+  
+  };
+  println(("x = " + x#3));
+  if ( (true || {
+    x#3 = (x#3 + 1);
+    true
+  }) ) {
+  
+  };
+  println(("x = " + x#3));
+  if ( ({
+    x#3 = (x#3 + 1);
+    true
+  } && false) ) {
+  
+  };
+  println(("x = " + x#3));
+  if ( ({
+    x#3 = (x#3 + 1);
+    true
+  } || true) ) {
+  
+  };
+  println(("x = " + x#3))
+}

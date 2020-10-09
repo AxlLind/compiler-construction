@@ -1,0 +1,18 @@
+Program(
+  MainDecl(
+    Identifier(Main#1):Main,
+    [
+    ],
+    [
+      Println(
+        Block(
+          [
+            IntLit(3):Int,
+            StringLit(string):String
+          ]
+        ):String
+      ):Unit
+    ]
+  ),
+  [
+  ])

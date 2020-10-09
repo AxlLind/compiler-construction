@@ -1,0 +1,12 @@
+object Main extends App {
+    var x : Int = 0;
+    x = 0;
+    if (false && {x = x+1; true}) {};
+    println("x = " + x);
+    if (true || {x = x+1; true}) {};
+    println("x = " + x);
+    if ({x = x+1; true} && false) {};
+    println("x = " + x);
+    if ({x = x+1; true} || true) {};
+    println("x = " + x)
+}
