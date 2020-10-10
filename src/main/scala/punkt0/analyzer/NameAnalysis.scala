@@ -198,7 +198,7 @@ object NameAnalysis extends Phase[Program, Program] {
       attachSymbols(scope, t.lhs)
       attachSymbols(scope, t.rhs)
     case t: New =>
-      attachSymbols(scope, t.tpe)
+      attachAndValidateType(scope, t.tpe)
     case t: Not =>
       attachSymbols(scope, t.expr)
     case t: Block =>

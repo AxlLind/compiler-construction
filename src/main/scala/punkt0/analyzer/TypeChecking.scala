@@ -77,19 +77,19 @@ object TypeChecking extends Phase[Program, Program] {
           tcExpr(t.expr, t.id.getType)
           TUnit
         case t: Block =>
-          t.exprs.foreach(tcExpr(_))
+          t.exprs foreach { tcExpr(_) }
           t.exprs.lastOption.map(_.getType) getOrElse TUnit
         case t: MethodCall => tcExpr(t.obj) match {
           case TAnyRef(c) => c.lookupMethod(t.meth.value) match {
             case Some(m) =>
               t.meth.setSymbol(m)
               if (t.args.length != m.argList.length)
-                Reporter.error(s"Incorrect number of function arguments given to '${t.meth.value}'.", expr)
+                Reporter.error("Incorrect number of function arguments.", expr)
               t.args.zip(m.argList) foreach { case (passedArg, arg) => tcExpr(passedArg, arg.getType) }
               m.retType
             case None => typeError(s"Class '${c.name}' has no method '${t.meth.value}'.", expr)
           }
-          case _ => typeError(s"Method '${t.meth.value}' called on a expression that is not a class.", expr)
+          case _ => typeError("Method called on a expression that is not a class.", expr)
         }
         case t: If =>
           tcExpr(t.expr, TBoolean)
@@ -100,7 +100,7 @@ object TypeChecking extends Phase[Program, Program] {
               (t1,t2) match {
                 case (t1,t2) if t1.isSubTypeOf(t2) => t2
                 case (t1,t2) if t2.isSubTypeOf(t1) => t1
-                case (TAnyRef(_), TAnyRef(_)) => typeLCA(t1, t2) getOrElse typeError("Arms of if-statements do not type match.", expr)
+                case (TAnyRef(_), TAnyRef(_)) => typeLCA(t1,t2) getOrElse typeError("Arms of if-statements do not type match.", expr)
                 case _ => typeError("Arms of if-statement do not type match", expr)
               }
             case None => tcExpr(t.thn, TUnit)
@@ -141,8 +141,8 @@ object TypeChecking extends Phase[Program, Program] {
 
     // type check all methods
     prog.classes.flatMap(_.methods) foreach { m =>
-      m.vars.foreach(tcVarDecl)
-      m.exprs.foreach(tcExpr(_))
+      m.vars foreach tcVarDecl
+      m.exprs foreach { tcExpr(_) }
       tcExpr(m.retExpr, m.retType.getType)
     }
 
