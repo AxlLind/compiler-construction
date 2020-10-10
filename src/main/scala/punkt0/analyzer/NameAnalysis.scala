@@ -214,6 +214,10 @@ object NameAnalysis extends Phase[Program, Program] {
       attachSymbols(scope, t.expr)
     case t: Assign =>
       attachSymbols(scope, t.id)
+      t.id.maybeSymbol.foreach(_ match {
+        case v: VariableSymbol => {}
+        case _ => Reporter.error("Left hand side of assignment is not a variable.", t)
+      })
       attachSymbols(scope, t.expr)
       if (scope.methodScope.flatMap(_.params.get(t.id.value)).isDefined)
         Reporter.error("Reassignment of method parameter.", t.id)
