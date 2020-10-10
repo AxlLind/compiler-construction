@@ -58,14 +58,14 @@ object TypeChecking extends Phase[Program, Program] {
           case (TAnyRef(_), TAnyRef(_)) => TBoolean
           case (t1,t2) if t1.isSubTypeOf(t2) => TBoolean
           case (t1,t2) if t2.isSubTypeOf(t1) => TBoolean
-          case (t1,t2) => typeError(s"The equals-operator is not defined for $t1 == $t2", expr)
+          case (t1,t2) => typeError(s"The equals-operator is not defined for $t1 == $t2.", expr)
         }
         case t: Plus => (tcExpr(t.lhs), tcExpr(t.rhs)) match {
           case (TInt, TInt) => TInt
           case (TInt, TString)
              | (TString, TInt)
              | (TString, TString) => TString
-          case (t1,t2) => typeError(s"The plus-operator is not defined for $t1 + $t2", expr)
+          case (t1,t2) => typeError(s"The plus-operator is not defined for $t1 + $t2.", expr)
         }
         case t: While =>
           tcExpr(t.cond, TBoolean)
@@ -100,7 +100,7 @@ object TypeChecking extends Phase[Program, Program] {
               (t1,t2) match {
                 case (t1,t2) if t1.isSubTypeOf(t2) => t2
                 case (t1,t2) if t2.isSubTypeOf(t1) => t1
-                case (TAnyRef(_), TAnyRef(_)) => typeLCA(t1, t2) getOrElse typeError("Arms of if-statements do not type match", expr)
+                case (TAnyRef(_), TAnyRef(_)) => typeLCA(t1, t2) getOrElse typeError("Arms of if-statements do not type match.", expr)
                 case _ => typeError("Arms of if-statement do not type match", expr)
               }
             case None => tcExpr(t.thn, TUnit)
@@ -110,7 +110,7 @@ object TypeChecking extends Phase[Program, Program] {
       expr.setType(tpe)
 
       if (expected.nonEmpty && !expected.exists(tpe.isSubTypeOf)) {
-        typeError(s"Expected ${expected.toList.mkString(" or ")}, found ${tpe}", expr)
+        typeError(s"Expected ${expected.toList.mkString(" or ")}, found $tpe.", expr)
         return expected.head
       }
 
@@ -122,12 +122,17 @@ object TypeChecking extends Phase[Program, Program] {
       tcExpr(v.expr, v.getSymbol.getType)
     }
 
+    // link the return type of each method to it's symbol, so we can find it later
+    prog.classes.flatMap(_.methods) foreach { m => m.getSymbol.retType = m.retType.getType }
+
     // set the type of all method arguments
     prog.classes.flatMap(_.methods).flatMap(_.args) foreach { arg => arg.getSymbol.setType(arg.tpe.getType) }
+
+    // validate signature against overridden method
     prog.classes.flatMap(_.methods.filter(_.overrides)) foreach { m =>
       m.args.zip(m.getSymbol.overridden.get.argList) foreach { case (arg, parentArg) =>
         if (!arg.tpe.getType.isSubTypeOf(parentArg.getType))
-          Reporter.error("Function argument does not type match with the overridden method", arg);
+          Reporter.error("Function argument does not type match with the overridden method.", arg);
       }
     }
 

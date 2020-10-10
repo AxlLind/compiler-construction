@@ -49,7 +49,7 @@ object Lexer extends Phase[File, Iterator[Token]] {
 
         if (source.slice(ptr, ptr + 2) == "/*") {
           source.indexOf("*/", ptr + 2) match {
-            case -1 => return Some(emitErr("Unmatched block comment", 2))
+            case -1 => return Some(emitErr("Unmatched block comment.", 2))
             case i => ptr = i + 2
           }
         }

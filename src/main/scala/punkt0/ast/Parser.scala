@@ -32,7 +32,7 @@ object Parser extends Phase[Iterator[Token], Program] {
     }
 
     def expected(kind: TokenKind, more: TokenKind*): Nothing =
-      Reporter.fatal(s"expected: ${(kind::more.toList).mkString(" or ")}, found $currentToken", currentToken)
+      Reporter.fatal(s"Expected ${(kind::more.toList).mkString(" or ")}, found $currentToken.", currentToken)
 
     def expectedToken(kind: TokenKind): Token = {
       val token = currentToken
@@ -283,7 +283,7 @@ object Parser extends Phase[Iterator[Token], Program] {
         }
       }
       if (main.isEmpty)
-        Reporter.fatal("No main declaration")
+        Reporter.error("No main declaration found.")
       Program(main.get, classes.reverse).setPos(startToken)
     }
 
