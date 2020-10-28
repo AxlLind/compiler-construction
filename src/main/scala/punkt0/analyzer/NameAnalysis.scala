@@ -8,6 +8,17 @@ import Types._
 object NameAnalysis extends Phase[Program, Program] {
 
   def collectSymbols(prog: Program): GlobalScope = {
+    val global = new GlobalScope()
+
+    // create class symbols and check for duplicate class definitions
+    global.classes = prog.classes
+      .map(c => c.setSymbol(new ClassSymbol(c.id.value)).getSymbol.setPos(c))
+      .foldLeft(Map[String, ClassSymbol]()) { (map, c) => map.contains(c.name) match {
+        case true =>
+          Reporter.error(s"Multiple definitions of class '${c.name}'.", c)
+          map
+        case false => map + (c.name -> c)
+      }}
 
     def checkCyclicInheritance(classes: List[ClassDecl]) = {
       var visited = Set[ClassSymbol]()
@@ -25,7 +36,7 @@ object NameAnalysis extends Phase[Program, Program] {
         c.parent.foreach(visit(_, c :: path))
       }
 
-      classes.map(_.getSymbol).foreach(visit(_, List()))
+      classes.map(_.getSymbol) foreach { visit(_, List()) }
     }
 
     def toVarMap(vars: List[VariableSymbol]): Map[String, VariableSymbol] =
@@ -38,20 +49,24 @@ object NameAnalysis extends Phase[Program, Program] {
 
     def symbolizeVariable(v: VarDecl): VariableSymbol = {
       val symbol = new VariableSymbol(v.id.value).setPos(v)
+      if (global.classes.get(v.id.value).isDefined)
+        Reporter.error(s"Variable '${v.id.value}' shadows a class.", v)
       v.setSymbol(symbol)
       symbol
     }
 
     def symbolizeFormal(v: Formal): VariableSymbol = {
       val symbol = new VariableSymbol(v.id.value).setPos(v)
+      if (global.classes.get(v.id.value).isDefined)
+        Reporter.error(s"Variable '${v.id.value}' shadows a class.", v)
       v.setSymbol(symbol)
       symbol
     }
 
     def symbolizeMethod(m: MethodDecl, c: ClassSymbol): MethodSymbol = {
       var symbol = new MethodSymbol(m.id.value, c).setPos(m)
-      val args = m.args.map(symbolizeFormal)
-      val vars = m.vars.map(symbolizeVariable)
+      val args = m.args map symbolizeFormal
+      val vars = m.vars map symbolizeVariable
 
       symbol.argList = args
       symbol.params = toVarMap(args)
@@ -87,19 +102,7 @@ object NameAnalysis extends Phase[Program, Program] {
       symbol
     }
 
-    val global = new GlobalScope()
-
-    // create class symbols and check for duplicate class definitions
-    global.classes = prog.classes
-      .map(c => c.setSymbol(new ClassSymbol(c.id.value)).getSymbol.setPos(c))
-      .foldLeft(Map[String, ClassSymbol]()) { (map, c) => map.contains(c.name) match {
-        case true =>
-          Reporter.error(s"Multiple definitions of class '${c.name}'.", c)
-          map
-        case false => map + (c.name -> c)
-      }}
     prog.classes.foreach(symbolizeClass)
-
     global.mainClass = symbolizeMain(prog.main)
 
     // link parent classes
@@ -213,12 +216,12 @@ object NameAnalysis extends Phase[Program, Program] {
     case t: Println =>
       attachSymbols(scope, t.expr)
     case t: Assign =>
+      attachSymbols(scope, t.expr)
       attachSymbols(scope, t.id)
       t.id.maybeSymbol.foreach(_ match {
         case v: VariableSymbol => {}
         case _ => Reporter.error("Left hand side of assignment is not a variable.", t)
       })
-      attachSymbols(scope, t.expr)
       if (scope.methodScope.flatMap(_.params.get(t.id.value)).isDefined)
         Reporter.error("Reassignment of method parameter.", t.id)
     case t: This => t.setSymbol(scope.classScope.get)
