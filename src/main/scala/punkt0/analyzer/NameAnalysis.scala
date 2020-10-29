@@ -50,7 +50,7 @@ object NameAnalysis extends Phase[Program, Program] {
     def symbolizeVariable(v: VarDecl): VariableSymbol = {
       val symbol = new VariableSymbol(v.id.value).setPos(v)
       if (global.classes.get(v.id.value).isDefined)
-        Reporter.error(s"Variable '${v.id.value}' shadows a class.", v)
+        Reporter.error(s"Variable '${v.id.value}' shadows a class.", v.id)
       v.setSymbol(symbol)
       symbol
     }
@@ -58,7 +58,7 @@ object NameAnalysis extends Phase[Program, Program] {
     def symbolizeFormal(v: Formal): VariableSymbol = {
       val symbol = new VariableSymbol(v.id.value).setPos(v)
       if (global.classes.get(v.id.value).isDefined)
-        Reporter.error(s"Variable '${v.id.value}' shadows a class.", v)
+        Reporter.error(s"Variable '${v.id.value}' shadows a class.", v.id)
       v.setSymbol(symbol)
       symbol
     }
@@ -227,7 +227,10 @@ object NameAnalysis extends Phase[Program, Program] {
     case t: This => t.setSymbol(scope.classScope.get)
     case t: Identifier => scope.lookupIdentifier(t.value) match {
       case Some(symbol) => t.setSymbol(symbol)
-      case None => Reporter.error("Reference to undefined identifier.", t)
+      case None => t.value match {
+        case "AnyRef" => t.setSymbol(anyRef.classSymbol)
+        case _ => Reporter.error("Reference to undefined identifier.", t)
+      }
     }
     case _ => {}
   }
