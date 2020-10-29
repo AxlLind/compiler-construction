@@ -41,15 +41,15 @@ object Main {
   def ast(f: File, ctx: Context): Unit = {
     val runner = Lexer andThen Parser
     val program = runner.run(f)(ctx)
-    Reporter.terminateIfErrors()
     println(program)
+    Reporter.terminateIfErrors()
   }
 
   def astPlus(f: File, ctx: Context): Unit = {
     val runner = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking
     val program = runner.run(f)(ctx)
-    Reporter.terminateIfErrors()
     println(TypedASTPrinter.apply(program))
+    Reporter.terminateIfErrors()
   }
 
   def printMain(f: File, ctx: Context): Unit = {
