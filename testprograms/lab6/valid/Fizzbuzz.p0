@@ -1,0 +1,48 @@
+class FizzBuzzCounter {
+	
+	def doYourThing(from: Int, to: Int): Int = {
+		var i : Int = 0;
+		i = from;
+		println("Running FizzBuzz from 0 to 100");
+		while(i < to) {
+			if (this.divides(15,i) == true) {
+				println("FizzBuzz")
+			}
+			else {
+				if (this.divides(5,i)) {
+					println("Fizz")
+				}
+				else {
+					if (this.divides(3,i)) {
+						println("Buzz")
+					}
+					else {
+						println(i)
+					}
+				}
+			};
+			i = i + 1
+		};
+		i
+	}
+
+	def divides(divisor: Int, number: Int) : Boolean = {
+		var n : Int = 0;
+		var r : Boolean = false;
+		
+		n = this.mod(number, divisor);
+		if (n == 0) { r = true }
+		else { r = false };
+
+		r
+	}
+
+	// From Pi.tool
+    def mod(m : Int, n : Int) : Int = {
+        m - (n * (m / n))
+    }
+}
+		
+object Main extends App {
+	println(new FizzBuzzCounter().doYourThing(0,100))
+}

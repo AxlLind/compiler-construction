@@ -1,0 +1,29 @@
+
+// This is a simple implementation of '99 bottles of beer' in Punkt0.
+// I guess everyone saw that one coming :)
+
+class DrunkPirate {
+    def sing(): Boolean = {
+        this.verse(99);
+        true
+    }
+
+    def verse(number: Int) : Int  = {
+        println(this.bottles(number) + " of beer on the wall, take one down, pass it around, " + this.bottles(number - 1) + " of beer on the wall.");
+        if (1 < number) {
+	  this.verse(number - 1)
+	} else {
+	  0
+	}
+    }
+
+    def bottles(number: Int) : String = {
+        if (number == 0) { "no more bottles" } else {
+            if (number == 1) "1 bottle" else number + " bottles"
+        }
+    }
+}
+
+object Main extends App {
+    if (new DrunkPirate().sing()) println("Done!")
+}
