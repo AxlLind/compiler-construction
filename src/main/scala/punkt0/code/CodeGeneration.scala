@@ -127,14 +127,14 @@ object CodeGeneration extends Phase[Program, Unit] {
           ch << IDIV
 
         case t: LessThan =>
-          val le = ch.getFreshLabel("le")
-          val end = ch.getFreshLabel("le_end")
+          val lt = ch.getFreshLabel("lt")
+          val end = ch.getFreshLabel("lt_end")
           emitCode(t.lhs)              //   { lhs }
           emitCode(t.rhs)              //   { rhs }
-          ch << If_ICmpLe(le)          //   if (lhs < rhs) goto le
+          ch << If_ICmpLt(lt)          //   if (lhs < rhs) goto lt
           ch << Ldc(0)                 //   false
           ch << Goto(end)              //   goto end
-          ch << Label(le)              // le:
+          ch << Label(lt)              // lt:
           ch << Ldc(1)                 //   true
           ch << Label(end)             // end:
 
