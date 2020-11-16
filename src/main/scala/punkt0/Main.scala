@@ -4,6 +4,7 @@ import java.io.File
 import lexer._
 import ast._
 import analyzer._
+import code._
 
 object Main {
   def processOptions(args: List[String], ctx: Context = Context()): Context = args match {
@@ -82,8 +83,8 @@ object Main {
     if (ctx.doPrintMain) return printMain(f, ctx)
     if (ctx.doEval) return eval(f, ctx)
 
-    println("Please provide an option")
-    sys.exit(1)
+    val compiler = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking andThen CodeGeneration
+    compiler.run(f)(ctx)
   }
 
 }
