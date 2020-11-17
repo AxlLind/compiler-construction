@@ -129,14 +129,14 @@ object CodeGeneration extends Phase[Program, Unit] {
         case t: LessThan =>
           val lt = ch.getFreshLabel("lt")
           val end = ch.getFreshLabel("lt_end")
-          emitCode(t.lhs)              //   { lhs }
-          emitCode(t.rhs)              //   { rhs }
-          ch << If_ICmpLt(lt)          //   if (lhs < rhs) goto lt
-          ch << Ldc(0)                 //   false
-          ch << Goto(end)              //   goto end
-          ch << Label(lt)              // lt:
-          ch << Ldc(1)                 //   true
-          ch << Label(end)             // end:
+          emitCode(t.lhs)     //   { lhs }
+          emitCode(t.rhs)     //   { rhs }
+          ch << If_ICmpLt(lt) //   if (lhs < rhs) goto lt
+          ch << Ldc(0)        //   false
+          ch << Goto(end)     //   goto end
+          ch << Label(lt)     // lt:
+          ch << Ldc(1)        //   true
+          ch << Label(end)    // end:
 
         case t: Equals =>
           val notEq = ch.getFreshLabel("not_eq")
@@ -170,8 +170,14 @@ object CodeGeneration extends Phase[Program, Unit] {
         case t: Null => ch << ACONST_NULL
         case t: New => ch << DefaultNew(t.tpe.value)
         case t: Identifier => getVar(t)
-        case t: Block => t.exprs foreach emitCode
         case t: Assign => putVar(t.id, t.expr)
+        case t: Block => if (!t.exprs.isEmpty) {
+          t.exprs.init foreach { expr =>
+            emitCode(expr)
+            if (expr.getType != TUnit) ch << POP
+          }
+          emitCode(t.exprs.last)
+        }
 
         case t: If =>
           val labelElse = ch.getFreshLabel("if_else")
@@ -215,7 +221,6 @@ object CodeGeneration extends Phase[Program, Unit] {
     def generateMain(main: MainDecl, sourceName: String, dir: String): Unit = {
       val classFile = new cafebabe.ClassFile("Main", None)
       classFile.setSourceFile(sourceName)
-      classFile.addDefaultConstructor
       val ch = classFile.addMainMethod.codeHandler
       val emitter = new CodeEmitter().withHandler(ch).withLocalVars(main.vars)
       main.vars foreach { v => emitter.putVar(v.id, v.expr) }
@@ -224,8 +229,6 @@ object CodeGeneration extends Phase[Program, Unit] {
         if (expr.getType != TUnit) ch << POP
       }
       ch << RETURN
-      // println("Main: -----------")
-      // ch.print
       ch.freeze
 
       classFile.writeToFile(s"${dir}/Main.class")
@@ -244,8 +247,6 @@ object CodeGeneration extends Phase[Program, Unit] {
       constructorCH << InvokeSpecial(parent, "<init>", "()V")
       c.vars foreach { v => classEmitter.putVar(v.id, v.expr) }
       constructorCH << RETURN
-      println("CONSTRUCTOR ------")
-      constructorCH.print
       constructorCH.freeze
 
       c.methods foreach { m =>
@@ -253,7 +254,6 @@ object CodeGeneration extends Phase[Program, Unit] {
         val argSignature = m.args map { _.tpe.getType.typeSignature }
         val ch = classFile.addMethod(retSignature, m.id.value, argSignature: _*).codeHandler
         val emitter = classEmitter.withMethod(m).withHandler(ch).withLocalVars(m.vars)
-        for ((k,v) <- emitter.map) println(s"| ${k.name} -> $v")
 
         m.vars foreach { v => emitter.putVar(v.id, v.expr) }
         m.exprs foreach { expr =>
@@ -266,8 +266,6 @@ object CodeGeneration extends Phase[Program, Unit] {
           case StringType() | Identifier(_) => ch << ARETURN
           case UnitType() => ch << RETURN
         }
-        println(s"${m.id.value}: -----------")
-        ch.print
         ch.freeze
       }
 
