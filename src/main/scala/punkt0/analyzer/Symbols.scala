@@ -67,11 +67,6 @@ object Symbols {
 
     def lookupVar(n: String): Option[VariableSymbol] =
       params.get(n) orElse members.get(n) orElse classSymbol.lookupVar(n)
-
-    def signature(): String = {
-      val argsSignature = argList map { _.getType.typeSignature} mkString ""
-      s"($argsSignature)${retType.typeSignature}"
-    }
   }
 
   class VariableSymbol(val name: String) extends Symbol

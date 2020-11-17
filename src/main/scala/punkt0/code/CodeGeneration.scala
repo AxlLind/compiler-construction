@@ -45,8 +45,9 @@ object CodeGeneration extends Phase[Program, Unit] {
 
     def getVar(id: Identifier) = {
       val varSymbol = id.getSymbol.asInstanceOf[VariableSymbol]
-      map.get(varSymbol).get match {
-        case ClassField => ch << ALoad(0) << GetField(className, id.value, id.getType.typeSignature)
+      val varType = map.get(varSymbol) getOrElse ClassField // superclass field if not found
+      varType match {
+        case ClassField => ch << ALoad(0) << GetField(className, id.value, id.getType.jvmType)
         case MethodArg(i) => ch << ArgLoad(i)
         case LocalVar(i) => varSymbol.getType match {
           case TBoolean | TInt => ch << ILoad(i)
@@ -57,11 +58,12 @@ object CodeGeneration extends Phase[Program, Unit] {
 
     def putVar(id: Identifier, expr: ExprTree) = {
       val varSymbol = id.getSymbol.asInstanceOf[VariableSymbol]
-      map.get(varSymbol).get match {
+      val varType = map.get(varSymbol) getOrElse ClassField // superclass field if not found
+      varType match {
         case ClassField =>
           ch << ALoad(0)
           emitCode(expr)
-          ch << PutField(className, id.value, id.getType.typeSignature)
+          ch << PutField(className, id.value, id.getType.jvmType)
         case LocalVar(i) =>
           emitCode(expr)
           varSymbol.getType match {
@@ -105,12 +107,12 @@ object CodeGeneration extends Phase[Program, Unit] {
             emitCode(t.rhs)
             ch << IADD
           case (t1, t2) =>
-            ch << DefaultNew("java/lang/StringBuilder")                                                                 // sb = new StringBuilder()
-            emitCode(t.lhs)                                                                                             // { lhs }
-            ch << InvokeVirtual("java/lang/StringBuilder", "append", s"(${t1.typeSignature})Ljava/lang/StringBuilder;") // sb.append(lhs)
-            emitCode(t.rhs)                                                                                             // { rhs }
-            ch << InvokeVirtual("java/lang/StringBuilder", "append", s"(${t2.typeSignature})Ljava/lang/StringBuilder;") // sb.append(rhs)
-            ch << InvokeVirtual("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")                          // sb.toString()
+            ch << DefaultNew("java/lang/StringBuilder")                                                           // sb = new StringBuilder()
+            emitCode(t.lhs)                                                                                       // { lhs }
+            ch << InvokeVirtual("java/lang/StringBuilder", "append", s"(${t1.jvmType})Ljava/lang/StringBuilder;") // sb.append(lhs)
+            emitCode(t.rhs)                                                                                       // { rhs }
+            ch << InvokeVirtual("java/lang/StringBuilder", "append", s"(${t2.jvmType})Ljava/lang/StringBuilder;") // sb.append(rhs)
+            ch << InvokeVirtual("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")                    // sb.toString()
         }
 
         case t: Minus =>
@@ -159,7 +161,9 @@ object CodeGeneration extends Phase[Program, Unit] {
         case t: MethodCall =>
           emitCode(t.obj)
           t.args foreach emitCode
-          val signature = t.meth.getSymbol.asInstanceOf[MethodSymbol].signature()
+          val m = t.meth.getSymbol.asInstanceOf[MethodSymbol]
+          val argsSignature = m.argList map { _.getType.jvmType} mkString ""
+          val signature = s"($argsSignature)${m.retType.jvmType}"
           ch << InvokeVirtual(t.obj.getType.toString, t.meth.value, signature)
 
         case t: IntLit => ch << Ldc(t.value)
@@ -205,10 +209,10 @@ object CodeGeneration extends Phase[Program, Unit] {
           t.expr.getType match {
             case TString => emitCode(t.expr)
             case tpe => {
-              ch << DefaultNew("java/lang/StringBuilder")                                                                  // sb = new StringBuilder()
-              emitCode(t.expr)                                                                                             // { lhs }
-              ch << InvokeVirtual("java/lang/StringBuilder", "append", s"(${tpe.typeSignature})Ljava/lang/StringBuilder;") // sb.append(lhs)
-              ch << InvokeVirtual("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")                           // sb.toString()
+              ch << DefaultNew("java/lang/StringBuilder")                                                            // sb = new StringBuilder()
+              emitCode(t.expr)                                                                                       // { lhs }
+              ch << InvokeVirtual("java/lang/StringBuilder", "append", s"(${tpe.jvmType})Ljava/lang/StringBuilder;") // sb.append(lhs)
+              ch << InvokeVirtual("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")                     // sb.toString()
             }
           }
           ch << InvokeVirtual("java/io/PrintStream", "println", "(Ljava/lang/String;)V")
@@ -239,7 +243,7 @@ object CodeGeneration extends Phase[Program, Unit] {
       val parent = c.parent map { _.value } getOrElse "java/lang/Object"
       val classFile = new cafebabe.ClassFile(className, Some(parent))
       classFile.setSourceFile(sourceName)
-      c.vars foreach { v => classFile.addField(v.tpe.getType.typeSignature, v.id.value) }
+      c.vars foreach { v => classFile.addField(v.tpe.getType.jvmType, v.id.value) }
 
       val constructorCH = classFile.addConstructor(Nil).codeHandler
       val classEmitter = new CodeEmitter().withClass(c).withHandler(constructorCH)
@@ -250,8 +254,8 @@ object CodeGeneration extends Phase[Program, Unit] {
       constructorCH.freeze
 
       c.methods foreach { m =>
-        val retSignature = m.retType.getType.typeSignature
-        val argSignature = m.args map { _.tpe.getType.typeSignature }
+        val retSignature = m.retType.getType.jvmType
+        val argSignature = m.args map { _.tpe.getType.jvmType }
         val ch = classFile.addMethod(retSignature, m.id.value, argSignature: _*).codeHandler
         val emitter = classEmitter.withMethod(m).withHandler(ch).withLocalVars(m.vars)
 

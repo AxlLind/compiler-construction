@@ -16,7 +16,7 @@ object Types {
 
   sealed abstract class Type {
     def isSubTypeOf(tpe: Type): Boolean
-    def typeSignature: String = ???
+    def jvmType: String = ???
   }
 
   case object TError extends Type {
@@ -32,25 +32,25 @@ object Types {
   case object TBoolean extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = tpe == TBoolean
     override def toString = "Boolean"
-    override def typeSignature = "Z"
+    override def jvmType = "Z"
   }
 
   case object TInt extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = tpe == TInt
     override def toString = "Int"
-    override def typeSignature = "I"
+    override def jvmType = "I"
   }
 
   case object TString extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = tpe == TString
     override def toString = "String"
-    override def typeSignature = "Ljava/lang/String;"
+    override def jvmType = "Ljava/lang/String;"
   }
 
   case object TUnit extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = tpe == TUnit
     override def toString = "Unit"
-    override def typeSignature = "V"
+    override def jvmType = "V"
   }
 
   case object TNull extends Type {
@@ -70,7 +70,7 @@ object Types {
       case _ => false
     }
     override def toString = classSymbol.name
-    override def typeSignature = s"L${classSymbol.name};"
+    override def jvmType = s"L${classSymbol.name};"
   }
 
   // special object to implement the fact that all objects are its subclasses
