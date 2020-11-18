@@ -64,6 +64,7 @@ object Symbols {
     var argList: List[VariableSymbol] = Nil
     var retType: Type = TError
     var overridden: Option[MethodSymbol] = None
+    var index: Int = -1
 
     def lookupVar(n: String): Option[VariableSymbol] =
       params.get(n) orElse members.get(n) orElse classSymbol.lookupVar(n)

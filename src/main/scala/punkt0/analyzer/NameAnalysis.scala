@@ -63,7 +63,7 @@ object NameAnalysis extends Phase[Program, Program] {
       symbol
     }
 
-    def symbolizeMethod(m: MethodDecl, c: ClassSymbol): MethodSymbol = {
+    def symbolizeMethod(m: MethodDecl, c: ClassSymbol, index: Int): MethodSymbol = {
       var symbol = new MethodSymbol(m.id.value, c).setPos(m)
       val args = m.args map symbolizeFormal
       val vars = m.vars map symbolizeVariable
@@ -71,6 +71,7 @@ object NameAnalysis extends Phase[Program, Program] {
       symbol.argList = args
       symbol.params = toVarMap(args)
       symbol.members = toVarMap(vars)
+      symbol.index = index
 
       symbol.params.keySet
         .intersect(symbol.members.keySet)
@@ -83,7 +84,7 @@ object NameAnalysis extends Phase[Program, Program] {
     def symbolizeClass(c: ClassDecl) = {
       val symbol = c.getSymbol
       symbol.members = toVarMap(c.vars.map(symbolizeVariable))
-      val methodSymbols = c.methods.map(symbolizeMethod(_, symbol))
+      val methodSymbols = c.methods.zipWithIndex map { case (m, index) => symbolizeMethod(m, symbol, index) }
       symbol.methods = methodSymbols.foldLeft(Map[String, MethodSymbol]()) { (map, v) => map.contains(v.name) match {
         case true =>
           Reporter.error(s"Duplicate method name '${v.name}'.", v)

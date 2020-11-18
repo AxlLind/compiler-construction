@@ -5,17 +5,18 @@ import lexer._
 import ast._
 import analyzer._
 import code._
+import cbackend._
 
 object Main {
   def processOptions(args: List[String], ctx: Context = Context()): Context = args match {
-    case "--help"    :: args => displayHelp()
-    case "--tokens"  :: args => processOptions(args, ctx.copy(doTokens = true))
-    case "--ast"     :: args => processOptions(args, ctx.copy(doAST = true))
-    case "--ast+"    :: args => processOptions(args, ctx.copy(doASTPlus = true))
-    case "--print"   :: args => processOptions(args, ctx.copy(doPrintMain = true))
-    case "--symid"   :: args => processOptions(args, ctx.copy(doSymbolIds = true))
-    case "--eval"    :: args => processOptions(args, ctx.copy(doEval = true))
-    case "-d" :: out :: args => processOptions(args, ctx.copy(outDir = Some(new File(out))))
+    case "--help"     :: args => displayHelp()
+    case "--tokens"   :: args => processOptions(args, ctx.copy(doTokens = true))
+    case "--ast"      :: args => processOptions(args, ctx.copy(doAST = true))
+    case "--ast+"     :: args => processOptions(args, ctx.copy(doASTPlus = true))
+    case "--print"    :: args => processOptions(args, ctx.copy(doPrintMain = true))
+    case "--symid"    :: args => processOptions(args, ctx.copy(doSymbolIds = true))
+    case "--cbackend" :: args => processOptions(args, ctx.copy(doCBackend = true))
+    case "-d" :: out  :: args => processOptions(args, ctx.copy(outDir = Some(new File(out))))
     case f :: args => processOptions(args, ctx.copy(file = Some(new File(f))))
     case List() => ctx
   }
@@ -29,6 +30,7 @@ object Main {
     println(" --ast+        prints the program as an AST, with type information")
     println(" --print       prints the program source, derived from the AST")
     println(" --symid       adds symbol information when printing the AST")
+    println(" --cbackend    outputs a C program instead of JVM bytecode")
     println(" -d <outdir>   generates class files in the specified directory")
     sys.exit(0)
   }
@@ -62,7 +64,10 @@ object Main {
     println(Printer.asString(program, ctx))
   }
 
-  def eval(f: File, ctx: Context): Unit = ???
+  def runCBackend(f: File, ctx: Context): Unit = {
+    val compiler = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking andThen CBackend
+    compiler.run(f)(ctx)
+  }
 
   def main(args: Array[String]): Unit = {
     val ctx = processOptions(args.toList)
@@ -81,7 +86,7 @@ object Main {
     if (ctx.doAST) return ast(f, ctx)
     if (ctx.doASTPlus) return astPlus(f, ctx)
     if (ctx.doPrintMain) return printMain(f, ctx)
-    if (ctx.doEval) return eval(f, ctx)
+    if (ctx.doCBackend) return runCBackend(f, ctx)
 
     val compiler = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking andThen CodeGeneration
     compiler.run(f)(ctx)
