@@ -39,7 +39,10 @@ void gc_mark_bytes(u32 start, u32 size) {
     gc.free_map[i / WORD_BITS] |= 1 << (i % WORD_BITS);
 }
 
+void gc_collect();
+
 void* gc_malloc(u32 bytes) {
+  gc_collect();
   u32 nbytes = bytes + GC_HDR_SIZE;
   for (u32 start_byte = 0; start_byte < GC_HEAP_SIZE; ++start_byte) {
     for (u32 offset = 0; offset < nbytes; ++offset) {
