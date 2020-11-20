@@ -59,6 +59,14 @@ object CBackend extends Phase[Program, Unit] {
       s"$classes\n$initFunctions\n$newFunctions\n$methods"
     }
 
+    def typeToStr(tpe: Type): String = tpe match {
+      case TBoolean => "int"
+      case TInt => "int"
+      case TString => "char *"
+      case TAnyRef(c) => s"struct punkt0_${c.name} *"
+      case _ => throw new Error("Unreachable")
+    }
+
     def classToStruct(scope: VariableScope, c: ClassDecl): String = {
       // (id: Identifier, parent: Option[Identifier], vars: List[VarDecl], methods: List[MethodDecl])
       val parent = c.parent map { p => s"  struct punkt0_${p.value} parent;\n" } getOrElse ""
@@ -121,7 +129,8 @@ object CBackend extends Phase[Program, Unit] {
 
         val exprs = t.exprs map { apply(scope, _, 1) } mkString ";\n  "
         val exprsStr = if (t.exprs.isEmpty) "" else s"  $exprs;\n"
-        s"${methodSignature(scope, t)} {\n  $overrideCheck\n$varsStr$exprsStr  return ${apply(scope, t.retExpr)};\n}"
+        val maybeReturn = if (t.retType == UnitType()) "" else "return ";
+        s"${methodSignature(scope, t)} {\n  $overrideCheck\n$varsStr$exprsStr  $maybeReturn${apply(scope, t.retExpr)};\n}"
 
       case t: VarDecl  => s"${apply(scope, t.tpe)} ${t.id.value} = ${apply(scope, t.expr)}"
       case t: Formal   => s"${apply(scope, t.tpe)} ${apply(scope, t.id)}"
@@ -147,8 +156,7 @@ object CBackend extends Phase[Program, Unit] {
         val args = t.args map { apply(scope, _, i) } mkString ", "
         val argStr = if (t.args.isEmpty) "" else s", $args"
         val methodsClass = t.meth.getSymbol.asInstanceOf[MethodSymbol].classSymbol.name;
-        val thisArg = s"(struct punkt0_${methodsClass}*)${apply(scope, t.obj)}"
-        s"${apply(scope, t.meth)}($thisArg$argStr)"
+        s"${apply(scope, t.meth)}(${apply(scope, t.obj)}$argStr)"
       case t: IntLit => s"${t.value}"
       case t: StringLit => s"${'"'}${t.value}${'"'}"
       case t: True => "1"
@@ -167,14 +175,23 @@ object CBackend extends Phase[Program, Unit] {
       case t: StringType => "char *"
       case t: UnitType => "void"
       case t: Block => s"{\n${t.exprs.map(indented(scope, _, i+1)).mkString(";\n")};\n${"  " * i}}"
-      case t: If => s"if (${apply(scope, t.expr, i)}) ${apply(scope, t.thn, i)}${t.els.map(x => s" else ${apply(scope, x, i)}").getOrElse("")}"
-      case t: While => s"while (${apply(scope, t.cond, i)}) ${apply(scope, t.body, i)}"
-      case t: Println => t.expr.getType match {
-        case TString => s"printf(${'"'}%s\\n${'"'}, ${apply(scope, t.expr, i)})"
-        case TInt => s"printf(${'"'}%d\\n${'"'}, ${apply(scope, t.expr, i)})"
-        case TBoolean => s"printf(${'"'}%s\\n${'"'}, ${apply(scope, t.expr, i)} ? ${'"'}true${'"'} : ${'"'}false${'"'})"
-        case _ => throw new Error("unreachable")
+      case t: If => t.getType match {
+        case TUnit => s"if (${apply(scope, t.expr, i)}) {\n  ${apply(scope, t.thn, i)};\n}${t.els.map(x => s" else {\n  ${apply(scope, x, i)};\n}").getOrElse("")}"
+        case tpe => {
+          val thn = s"  punkt0_if_res = ${apply(scope, t.thn, i)};"
+          val els = s"  punkt0_if_res = ${apply(scope, t.els.get, i)};"
+          s"({\n  ${typeToStr(tpe)} punkt0_if_res;\n  if (${apply(scope, t.expr, i)}) {\n  $thn\n  } else {\n $els\n}\n  punkt0_if_res;\n})"
+        }
       }
+      case t: While => s"while (${apply(scope, t.cond, i)}) ${apply(scope, t.body, i)}"
+      case t: Println =>
+        val (printStr, printValue) = t.expr.getType match {
+          case TString => ("%s", apply(scope, t.expr, i))
+          case TInt => ("%d", apply(scope, t.expr, i))
+          case TBoolean => ("%s", s"${apply(scope, t.expr, i)} ? ${'"'}true${'"'} : ${'"'}false${'"'})")
+          case _ => throw new Error("unreachable")
+        }
+        s"printf(${'"'}$printStr\\n${'"'}, $printValue)"
       case t: Assign => s"${apply(scope, t.id)} = ${apply(scope, t.expr, i)}"
     }
 
