@@ -9,6 +9,7 @@
 
 typedef unsigned char u8;
 typedef uint32_t u32;
+typedef uint64_t u64;
 
 struct gc_header {
   u32 canary;
@@ -18,13 +19,13 @@ struct gc_header {
 struct garbage_collector {
   u32 *free_map;
   u8 *heap;
-  u8 *top_stack_ptr;
+  u64 top_stack_ptr;
 };
 
 struct garbage_collector gc;
 
 void gc_init(u8 *top_stack_ptr) {
-  gc.top_stack_ptr = top_stack_ptr;
+  gc.top_stack_ptr = (u64)top_stack_ptr;
   gc.heap = calloc(GC_HEAP_SIZE, sizeof(u8));
   gc.free_map = calloc(FREE_MAP_SIZE, sizeof(u8));
 }
@@ -39,10 +40,7 @@ void gc_mark_bytes(u32 start, u32 size) {
     gc.free_map[i / WORD_BITS] |= 1 << (i % WORD_BITS);
 }
 
-void gc_collect();
-
 void* gc_malloc(u32 bytes) {
-  gc_collect();
   u32 nbytes = bytes + GC_HDR_SIZE;
   for (u32 start_byte = 0; start_byte < GC_HEAP_SIZE; ++start_byte) {
     for (u32 offset = 0; offset < nbytes; ++offset) {
@@ -96,11 +94,14 @@ void gc_mark_range(u8 *ptr, u32 size) {
     gc_mark_ptr(*(u8**) (ptr + i));
 }
 
-void gc_collect() {
-  u8 dummy_sp;
-  u32 stack_size = gc.top_stack_ptr - &dummy_sp;
+// Marked as 'noinline' to force a stack-frame to be allocated.
+// This means stack_size will always be positive even when collecting from main,
+// When compiling with -O2/3 this becomes an issue since this gets inlined.
+void __attribute__((noinline)) gc_collect() {
+  u8 dummy;
+  u32 stack_size = gc.top_stack_ptr - (u64)&dummy;
   memset(gc.free_map, 0, FREE_MAP_SIZE); // remove all markings
-  gc_mark_range(&dummy_sp, stack_size);  // mark everything we can reach
+  gc_mark_range(&dummy, stack_size);  // mark everything we can reach
 }
 
 char* str_add_is(int a, char* s) {
@@ -118,7 +119,7 @@ char* str_add_si(char* s, int a) {
 char* str_add_ss(char* s1, char *s2) {
   u32 slen1 = strlen(s1);
   u32 slen2 = strlen(s2);
-  char *new_s = gc_malloc(slen1 + slen2 + 1); // max size of an int string
+  char *new_s = gc_malloc(slen1 + slen2 + 1);
   sprintf(new_s, "%s%s", s1, s2);
   return new_s;
 }
