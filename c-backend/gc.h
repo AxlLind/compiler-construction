@@ -90,6 +90,8 @@ void gc_mark_ptr(u8 *ptr) {
 }
 
 void gc_mark_range(u8 *ptr, u32 size) {
+  if (size < sizeof(u8*))
+    return; // range not big enough to contain a ptr
   for (u32 i = 0; i < size; ++i)
     gc_mark_ptr(*(u8**) (ptr + i));
 }
