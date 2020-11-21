@@ -188,7 +188,7 @@ object CBackend extends Phase[Program, Unit] {
         val (printStr, printValue) = t.expr.getType match {
           case TString => ("%s", apply(scope, t.expr, i))
           case TInt => ("%d", apply(scope, t.expr, i))
-          case TBoolean => ("%s", s"${apply(scope, t.expr, i)} ? ${'"'}true${'"'} : ${'"'}false${'"'})")
+          case TBoolean => ("%s", s"${apply(scope, t.expr, i)} ? ${'"'}true${'"'} : ${'"'}false${'"'}")
           case _ => throw new Error("unreachable")
         }
         s"printf(${'"'}$printStr\\n${'"'}, $printValue)"
