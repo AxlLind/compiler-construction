@@ -92,16 +92,17 @@ object CBackend extends Phase[Program, Unit] {
         val forwardDeclarations = forwardDecls(scope, t)
         val structDefinitions = t.classes map { classToStruct(scope, _) } mkString "\n\n"
         val classMethods = t.classes map { c => apply(scope including c, c) } mkString "\n\n"
-        val main = apply(scope.withMain including t.main, t.main)
-        List(forwardDeclarations, structDefinitions, classMethods, main) mkString "\n\n"
+        val ourMain = apply(scope.withMain including t.main, t.main)
+        val cMain = s"int main() {\n  int dummy;\n  gc_init(&dummy);\n  punkt0_main();\n}"
+        List(forwardDeclarations, structDefinitions, classMethods, ourMain, cMain) mkString "\n\n"
 
       case t: MainDecl =>
         val vars = t.vars map { apply(scope, _, 1) } mkString ";\n  "
+        val varsStr = if (t.vars.isEmpty) "" else s"  $vars;\n"
         val exprs = t.exprs map { apply(scope, _, 1) } mkString ";\n  "
-        s"int main() {\n  u8 dummy_sp;\n  gc_init(&dummy_sp);\n  $vars;\n  $exprs;\n}"
+        s"void __attribute__((noinline)) punkt0_main() {\n$varsStr  $exprs;\n}"
 
       case t: ClassDecl =>
-        // struct definition is handled by Program, just have to add methods and constructor
         val parentInit = t.parent map { p => s"  punkt0_init_${p.value}(this);\n" } getOrElse ""
 
         val varInits = t.vars map { v => s"  ${apply(scope, v.id)} = ${apply(scope, v.expr)}"} mkString ";\n"
