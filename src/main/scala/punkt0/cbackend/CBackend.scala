@@ -149,7 +149,7 @@ object CBackend extends Phase[Program, Unit] {
           case (TInt, TInt) => s"($lhs + $rhs)"
           case (TInt, TString) => s"str_add_is($lhs, $rhs)"
           case (TString, TInt) => s"str_add_si($lhs, $rhs)"
-          case (TString, TString) => s"str_add_ss($lhs, $rhs)"
+          case (TString, TString) => s"str_add($lhs, $rhs)"
           case _ => throw new Error("unreachable")
         }
       case t: MethodCall =>

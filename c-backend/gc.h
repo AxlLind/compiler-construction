@@ -104,22 +104,19 @@ void __attribute__((noinline)) gc_collect() {
   gc_mark_range(&dummy, stack_size);  // mark everything we can reach
 }
 
+/* utility functions for the overloaded addition operator */
+char* str_add(char* s1, char *s2) {
+  char *str = gc_malloc(strlen(s1) + strlen(s2) + 1);
+  sprintf(str, "%s%s", s1, s2);
+  return str;
+}
 char* str_add_is(int a, char* s) {
-  u32 slen = strlen(s);
-  char *new_s = gc_malloc(slen + 12); // max size of an int string
-  sprintf(new_s, "%d%s", a, s);
-  return new_s;
+  char num_str[12]; // max size of a str int
+  sprintf(num_str, "%d", a);
+  return str_add(num_str, s);
 }
 char* str_add_si(char* s, int a) {
-  u32 slen = strlen(s);
-  char *new_s = gc_malloc(slen + 12); // max size of an int string
-  sprintf(new_s, "%s%d", s, a);
-  return new_s;
-}
-char* str_add_ss(char* s1, char *s2) {
-  u32 slen1 = strlen(s1);
-  u32 slen2 = strlen(s2);
-  char *new_s = gc_malloc(slen1 + slen2 + 1);
-  sprintf(new_s, "%s%s", s1, s2);
-  return new_s;
+  char num_str[12]; // max size of a str int
+  sprintf(num_str, "%d", a);
+  return str_add(s, num_str);
 }
