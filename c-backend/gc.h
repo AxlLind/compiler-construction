@@ -41,33 +41,34 @@ void gc_mark_bytes(u32 start, u32 size) {
     gc.free_map[i / WORD_BITS] |= 1 << (i % WORD_BITS);
 }
 
-void* gc_malloc(u32 bytes) {
-  u32 nbytes = bytes + GC_HDR_SIZE;
-  for (u32 start_byte = 0; start_byte < GC_HEAP_SIZE; ++start_byte) {
+u32 gc_find_first_fit(u32 nbytes) {
+  for (u32 heap_offset = 0; heap_offset < GC_HEAP_SIZE - nbytes; ++heap_offset) {
     for (u32 offset = 0; offset < nbytes; ++offset) {
-      if (gc_byte_free(start_byte + offset))
+      if (gc_byte_free(heap_offset + offset))
         continue;
-      start_byte += offset; // cannot fit our block here, so jump forward
+      heap_offset += offset; // cannot fit our block here, so jump forward
       goto mem_filled;
     }
-
-    // found a fit, mark it!
-    gc_mark_bytes(start_byte, nbytes);
-
-    // write gc header information
-    struct gc_header *hdr = (struct gc_header*) (gc.heap + start_byte);
-    hdr->canary = GC_CANARY;
-    hdr->size = nbytes;
-
-    // clear the memory and return a ptr to it
-    memset(hdr + 1, 0, bytes);
-    return hdr + 1;
-
+    return heap_offset;
     mem_filled:;
   }
-
-  printf("ERROR: GC out of memory.");
+  printf("ERROR: GC out of memory.\n");
   exit(1);
+}
+
+void* gc_malloc(u32 bytes) {
+  u32 nbytes = bytes + GC_HDR_SIZE;
+  u32 heap_offset = gc_find_first_fit(nbytes);
+  gc_mark_bytes(heap_offset, nbytes);
+
+  // write gc header information
+  struct gc_header *hdr = (struct gc_header*) (gc.heap + heap_offset);
+  hdr->canary = GC_CANARY;
+  hdr->size = nbytes;
+
+  // clear the memory and return a ptr to it
+  memset(hdr + 1, 0, bytes);
+  return hdr + 1;
 }
 
 void gc_mark_range(u8 *ptr, u32 size);
@@ -105,7 +106,7 @@ void __attribute__((noinline)) gc_collect() {
   gc_mark_range(&dummy, stack_size);  // mark everything we can reach
 }
 
-/* utility functions for the overloaded addition operator */
+// utility functions for the overloaded addition operator
 char* str_add(char* s1, char *s2) {
   char *str = gc_malloc(strlen(s1) + strlen(s2) + 1);
   sprintf(str, "%s%s", s1, s2);
