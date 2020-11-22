@@ -175,7 +175,12 @@ object CBackend extends Phase[Program, Unit] {
       case t: IntType => "int"
       case t: StringType => "char *"
       case t: UnitType => "void"
-      case t: Block => s"{\n${t.exprs.map(indented(scope, _, i+1)).mkString(";\n")};\n${"  " * i}}"
+      case t: Block =>
+        val block = s"{\n${t.exprs.map(indented(scope, _, i+1)).mkString(";\n")};\n${"  " * i}}"
+        t.getType match {
+          case TUnit => block
+          case _ => s"($block)"
+        }
       case t: If => t.getType match {
         case TUnit => s"if (${apply(scope, t.expr, i)}) {\n  ${apply(scope, t.thn, i)};\n}${t.els.map(x => s" else {\n  ${apply(scope, x, i)};\n}").getOrElse("")}"
         case tpe => {
