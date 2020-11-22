@@ -84,7 +84,7 @@ void gc_mark_ptr(u8 *ptr) {
     return; // already marked, cyclical reference
 
   gc_mark_bytes(start_byte_offset, hdr->size);
-  gc_mark_range((u8*)hdr, hdr->size);
+  gc_mark_range((u8*)(hdr + 1), hdr->size - GC_HDR_SIZE);
 }
 
 void gc_mark_range(u8 *ptr, u32 size) {
