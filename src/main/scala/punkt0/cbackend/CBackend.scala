@@ -207,13 +207,14 @@ object CBackend extends Phase[Program, Unit] {
   def run(prog: Program)(ctx: Context): Unit = {
     val outDir = ctx.outDir map { _.getPath } getOrElse "."
 
+    val gcFile = new java.io.File("./c-backend/gc.h")
+    val gcFileStr = scala.io.Source.fromFile(gcFile).mkString
     val f = new java.io.File(outDir)
     if (!f.exists()) { f.mkdir() }
 
-    println(toCCode(prog))
-    // val pw = new PrintWriter(new File(s"${outDir}/out.c"))
-    // pw.write(toCCode(prog))
-    // pw.close
+    val pw = new PrintWriter(new File(s"${outDir}/out.c"))
+    pw.write(s"$gcFileStr\n${toCCode(prog)}")
+    pw.close
   }
 
 }
