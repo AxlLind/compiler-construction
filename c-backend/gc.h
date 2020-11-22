@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #define GC_HEAP_SIZE (1 << 20)
 #define WORD_BITS (8 * sizeof(u32))
