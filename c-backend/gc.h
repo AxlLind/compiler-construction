@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -90,20 +91,38 @@ void gc_mark_ptr(u8 *ptr) {
 }
 
 void gc_mark_range(u8 *ptr, u32 size) {
-  if (size < sizeof(u8*))
-    return; // range not big enough to contain a ptr
-  for (u32 i = 0; i < size; ++i)
+  for (u32 i = 0; i + sizeof(u8*) < size; ++i)
     gc_mark_ptr(*(u8**) (ptr + i));
+}
+
+// Pointers to gc-allocated objects can also be found in registers instead
+// of on the stack. This is very common when compiling with optimizations.
+void gc_mark_from_registers(void) {
+  u64 registers[12];
+  asm("mov %%rax, %0;" : "=m" (registers[0]));
+  asm("mov %%rbx, %0;" : "=m" (registers[1]));
+  asm("mov %%rcx, %0;" : "=m" (registers[2]));
+  asm("mov %%rdx, %0;" : "=m" (registers[3]));
+  asm("mov %%r8,  %0;" : "=m" (registers[4]));
+  asm("mov %%r9,  %0;" : "=m" (registers[5]));
+  asm("mov %%r10, %0;" : "=m" (registers[6]));
+  asm("mov %%r11, %0;" : "=m" (registers[7]));
+  asm("mov %%r12, %0;" : "=m" (registers[8]));
+  asm("mov %%r13, %0;" : "=m" (registers[9]));
+  asm("mov %%r14, %0;" : "=m" (registers[10]));
+  asm("mov %%r15, %0;" : "=m" (registers[11]));
+  gc_mark_range((u8*)registers, sizeof(registers));
 }
 
 // Marked as 'noinline' to force a stack-frame to be allocated.
 // This means stack_size will always be positive even when collecting from main,
 // When compiling with -O2/3 this becomes an issue since this gets inlined.
-void __attribute__((noinline)) gc_collect() {
+void __attribute__((noinline)) gc_collect(void) {
   u8 dummy;
   u32 stack_size = gc.top_stack_ptr - (u64)&dummy;
   memset(gc.free_map, 0, FREE_MAP_SIZE); // remove all markings
-  gc_mark_range(&dummy, stack_size);  // mark everything we can reach
+  gc_mark_from_registers();              // mark things contained in registers
+  gc_mark_range(&dummy, stack_size);     // mark things on the stack
 }
 
 // utility functions for the overloaded addition operator
