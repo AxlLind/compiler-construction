@@ -37,6 +37,35 @@ object CBackend extends Phase[Program, Unit] {
     def withMain = copy(isMain = true)
   }
 
+  def computeVTableIndexes(c: ClassDecl) = {
+    var parent = c.getSymbol.parent
+    var numParentMethods = 0
+    while (parent.isDefined) {
+      numParentMethods += parent.get.methods.size
+      parent = parent.get.parent
+    }
+    c.getSymbol.numParentMethods = numParentMethods
+    c.methods.zipWithIndex foreach { case (m, i) => m.getSymbol.vtableIndex = numParentMethods + i}
+  }
+
+  def buildVTable(c: ClassDecl): String = {
+    var classTree = List(c.getSymbol)
+    var parent = c.getSymbol.parent
+    while (parent.isDefined) {
+      classTree = parent.get :: classTree
+      parent = parent.get.parent
+    }
+    val overrideMap = classTree
+      .flatMap(_.methods.values)
+      .filter(_.overridden.isDefined)
+      .map(m => m.overridden.get.vtableIndex -> s"punkt0_${c.id.value}_${m.name}")
+      .toMap
+
+    val numMethods = c.getSymbol.numParentMethods + c.methods.length
+    val entries = (0 until numMethods).map(i => overrideMap.get(i).getOrElse("NULL"))
+    s"void *punkt0_${c.id.value}__vtable[] = { ${entries mkString ", "} };"
+  }
+
   def toCCode(prog: Program): String = {
     def indented(scope: VariableScope, t: Tree, i: Int): String = s"${"  " * i}${apply(scope, t, i)}"
 
@@ -68,33 +97,22 @@ object CBackend extends Phase[Program, Unit] {
     }
 
     def classToStruct(scope: VariableScope, c: ClassDecl): String = {
-      // (id: Identifier, parent: Option[Identifier], vars: List[VarDecl], methods: List[MethodDecl])
       val parent = c.parent map { p => s"  struct punkt0_${p.value} parent;\n" } getOrElse ""
-      val vtable = if (c.methods.isEmpty) "" else s"  void *vtable[${c.methods.length}];\n"
+      val vtablePtr = if (c.getSymbol.parent.isEmpty) "  void **vtable;\n" else ""
       val fields = c.vars map { v => s"  ${apply(scope, v.tpe)} ${v.id.value};" } mkString "\n"
       val fieldsStr = if (c.vars.isEmpty) "" else s"$fields\n"
-      s"struct punkt0_${c.id.value} {\n$parent$vtable$fieldsStr};"
-    }
-
-    def setupVtables(scope: VariableScope, c: ClassDecl): String = {
-      val overriddenMethods = c.methods.filter { _.overrides }
-      val vtableOverrides = overriddenMethods map { m =>
-        val symbol = m.getSymbol
-        val overridden = symbol.overridden.get
-        val parentClass = overridden.classSymbol.name
-        s"  ((struct punkt0_$parentClass*)this)->vtable[${overridden.index}] = ${apply(scope, m.id)};"
-      }
-      if (vtableOverrides.isEmpty) "" else s"${vtableOverrides mkString "\n"}\n"
+      s"struct punkt0_${c.id.value} {\n$parent$vtablePtr$fieldsStr};"
     }
 
     def apply(scope: VariableScope, tree: Tree, i: Int = 0): String = tree match {
       case t: Program =>
         val forwardDeclarations = forwardDecls(scope, t)
+        val vtables = t.classes map buildVTable mkString "\n"
         val structDefinitions = t.classes map { classToStruct(scope, _) } mkString "\n\n"
         val classMethods = t.classes map { c => apply(scope including c, c) } mkString "\n\n"
         val ourMain = apply(scope.withMain including t.main, t.main)
-        val cMain = s"int main() {\n  int dummy;\n  gc_init(&dummy);\n  punkt0_main();\n}"
-        List(forwardDeclarations, structDefinitions, classMethods, ourMain, cMain) mkString "\n\n"
+        val cMain = s"int main() {\n  u8 dummy;\n  gc_init(&dummy);\n  punkt0_main();\n}"
+        List(forwardDeclarations, vtables, structDefinitions, classMethods, ourMain, cMain) mkString "\n\n"
 
       case t: MainDecl =>
         val vars = t.vars map { apply(scope, _, 1) } mkString ";\n  "
@@ -108,7 +126,8 @@ object CBackend extends Phase[Program, Unit] {
         val varInits = t.vars map { v => s"  ${apply(scope, v.id)} = ${apply(scope, v.expr)}"} mkString ";\n"
         val varInitsStr = if (t.vars.isEmpty) "" else s"$varInits;\n"
 
-        val initFunction = s"void punkt0_init_${t.id.value}(struct punkt0_${t.id.value} *this) {\n$parentInit${setupVtables(scope, t)}$varInitsStr}"
+        val linkVtable = s"  *((void***)this) = punkt0_${t.id.value}__vtable;\n"
+        val initFunction = s"void punkt0_init_${t.id.value}(struct punkt0_${t.id.value} *this) {\n$parentInit$linkVtable$varInitsStr}"
 
         val thisType = apply(scope, t.id)
         val constructor = s"$thisType punkt0_new_${t.id.value}() {\n  $thisType this = gc_malloc(sizeof(struct punkt0_${t.id.value}));\n  punkt0_init_${t.id.value}(this);\n  return this;\n}"
@@ -119,8 +138,8 @@ object CBackend extends Phase[Program, Unit] {
         // (overrides: Boolean, retType: TypeTree, id: Identifier, args: List[Formal], vars: List[VarDecl], exprs: List[ExprTree], retExpr: ExprTree)
         val retType = apply(scope, t.retType)
         val args = if (t.args.isEmpty) "" else s", ${t.args map { _.id.value } mkString ", "}"
-        val methodIndex = t.getSymbol.index
-        val overrideCheck = s"if (this->vtable[$methodIndex] != NULL)\n    return (($retType (*)())this->vtable[$methodIndex])(this$args);"
+        val methodIndex = t.getSymbol.vtableIndex
+        val overrideCheck = s"if ((*(void***)this)[$methodIndex] != NULL)\n    return (($retType (*)())(*(void***)this)[$methodIndex])(this$args);"
 
         val argList = t.args map { apply(scope, _) } mkString ", "
         val argListStr = if (argList.isEmpty) "" else s", $args"
@@ -131,7 +150,7 @@ object CBackend extends Phase[Program, Unit] {
         val exprs = t.exprs map { apply(scope, _, 1) } mkString ";\n  "
         val exprsStr = if (t.exprs.isEmpty) "" else s"  $exprs;\n"
         val maybeReturn = if (t.retType == UnitType()) "" else "return ";
-        s"${methodSignature(scope, t)} {\n  $overrideCheck\n$varsStr$exprsStr  $maybeReturn${apply(scope, t.retExpr)};\n}"
+        s"${methodSignature(scope, t)} {\n  $overrideCheck\n$varsStr$exprsStr  gc_collect();\n  $maybeReturn${apply(scope, t.retExpr)};\n}"
 
       case t: VarDecl  => s"${apply(scope, t.tpe)} ${t.id.value} = ${apply(scope, t.expr)}"
       case t: Formal   => s"${apply(scope, t.tpe)} ${apply(scope, t.id)}"
@@ -211,6 +230,8 @@ object CBackend extends Phase[Program, Unit] {
     val gcFileStr = scala.io.Source.fromFile(gcFile).mkString
     val f = new java.io.File(outDir)
     if (!f.exists()) { f.mkdir() }
+
+    prog.classes foreach computeVTableIndexes
 
     val pw = new PrintWriter(new File(s"${outDir}/out.c"))
     pw.write(s"$gcFileStr\n${toCCode(prog)}")

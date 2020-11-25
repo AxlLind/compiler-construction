@@ -50,6 +50,7 @@ object Symbols {
     var parent: Option[ClassSymbol] = None
     var methods = Map[String, MethodSymbol]()
     var members = Map[String, VariableSymbol]()
+    var numParentMethods = -1
 
     def lookupMethod(n: String): Option[MethodSymbol] =
       methods.get(n) orElse parent.flatMap(_.lookupMethod(n))
@@ -64,7 +65,7 @@ object Symbols {
     var argList: List[VariableSymbol] = Nil
     var retType: Type = TError
     var overridden: Option[MethodSymbol] = None
-    var index: Int = -1
+    var vtableIndex: Int = -1
 
     def lookupVar(n: String): Option[VariableSymbol] =
       params.get(n) orElse members.get(n) orElse classSymbol.lookupVar(n)
