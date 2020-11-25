@@ -91,7 +91,7 @@ void gc_mark_ptr(u8 *ptr) {
 }
 
 void gc_mark_range(u8 *ptr, u32 size) {
-  for (u32 i = 0; i + sizeof(u8*) < size; ++i)
+  for (u32 i = 0; i + sizeof(u8*) <= size; ++i)
     gc_mark_ptr(*(u8**) (ptr + i));
 }
 
