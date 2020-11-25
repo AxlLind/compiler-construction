@@ -48,22 +48,25 @@ object CBackend extends Phase[Program, Unit] {
     c.methods.zipWithIndex foreach { case (m, i) => m.getSymbol.vtableIndex = numParentMethods + i}
   }
 
-  def buildVTable(c: ClassDecl): String = {
-    var classTree = List(c.getSymbol)
-    var parent = c.getSymbol.parent
-    while (parent.isDefined) {
-      classTree = parent.get :: classTree
-      parent = parent.get.parent
-    }
-    val overrideMap = classTree
-      .flatMap(_.methods.values)
-      .filter(_.overridden.isDefined)
-      .map(m => m.overridden.get.vtableIndex -> s"p0_${c.id.value}_${m.name}")
-      .toMap
+  def buildVTables(classes: List[ClassDecl]): String = {
+    def buildVTable(c: ClassDecl): String = {
+      var classTree = List(c.getSymbol)
+      var parent = c.getSymbol.parent
+      while (parent.isDefined) {
+        classTree = parent.get :: classTree
+        parent = parent.get.parent
+      }
+      val overrideMap = classTree
+        .flatMap(_.methods.values)
+        .filter(_.overridden.isDefined)
+        .map(m => m.overridden.get.vtableIndex -> s"p0_${c.id.value}_${m.name}")
+        .toMap
 
-    val numMethods = c.getSymbol.numParentMethods + c.methods.length
-    val entries = (0 until numMethods).map(i => overrideMap.get(i).getOrElse("NULL"))
-    s"void *p0_${c.id.value}__vtable[] = { ${entries mkString ", "} };"
+      val numMethods = c.getSymbol.numParentMethods + c.methods.length
+      val entries = (0 until numMethods).map(i => overrideMap.get(i).getOrElse("NULL"))
+      s"void *p0_${c.id.value}__vtable[] = { ${entries mkString ", "} };"
+    }
+    s"/*----- vtables -----*/\n${classes.map(buildVTable).mkString("\n")}"
   }
 
   def toCCode(prog: Program): String = {
@@ -80,12 +83,15 @@ object CBackend extends Phase[Program, Unit] {
       val classes = p.classes map { c => s"struct p0_${c.id.value};" } mkString "\n"
       val initFunctions = p.classes map { c => s"void p0_${c.id.value}__init(struct p0_${c.id.value} *this);"} mkString "\n"
       val newFunctions = p.classes map { c => s"${apply(scope, c.id)} p0_${c.id.value}__new();"} mkString "\n"
-      val methods = p.classes map { cls =>
-        val newScope = scope including cls
-        cls.methods map { m => s"${methodSignature(newScope including m, m)};"} mkString "\n"
-      } mkString "\n"
+      val methods = p.classes
+        .map(cls => {
+          val newScope = scope including cls
+          cls.methods map { m => s"${methodSignature(newScope including m, m)};"} mkString "\n"
+        })
+        .filter(!_.isEmpty)
+        .mkString("\n")
 
-      s"$classes\n$initFunctions\n$newFunctions\n$methods"
+      s"/*----- forward declarations -----*/\n$classes\n$initFunctions\n$newFunctions\n$methods"
     }
 
     def typeToStr(tpe: Type): String = tpe match {
@@ -96,50 +102,64 @@ object CBackend extends Phase[Program, Unit] {
       case _ => throw new Error("Unreachable")
     }
 
-    def classToStruct(scope: VariableScope, c: ClassDecl): String = {
-      val parent = c.parent map { p => s"  struct p0_${p.value} parent;\n" } getOrElse ""
-      val vtablePtr = if (c.getSymbol.parent.isEmpty) "  void **vtable;\n" else ""
-      val fields = c.vars map { v => s"  ${apply(scope, v.tpe)} ${v.id.value};" } mkString "\n"
-      val fieldsStr = if (c.vars.isEmpty) "" else s"$fields\n"
-      s"struct p0_${c.id.value} {\n$parent$vtablePtr$fieldsStr};"
+    def structDefinitions(scope: VariableScope, classes: List[ClassDecl]): String = {
+      def classToStruct(c: ClassDecl): String = {
+        val parent = c.parent map { p => s"  struct p0_${p.value} parent;\n" } getOrElse ""
+        val vtablePtr = if (c.getSymbol.parent.isEmpty) "  void **vtable;\n" else ""
+        val fields = c.vars map { v => s"  ${apply(scope, v.tpe)} ${v.id.value};" } mkString "\n"
+        val fieldsStr = if (c.vars.isEmpty) "" else s"$fields\n"
+        s"struct p0_${c.id.value} {\n$parent$vtablePtr$fieldsStr};"
+      }
+      s"/*----- struct definitions -----*/\n${classes.map(classToStruct).mkString("\n")}"
     }
 
     def apply(scope: VariableScope, tree: Tree, i: Int = 0): String = tree match {
       case t: Program =>
         val forwardDeclarations = forwardDecls(scope, t)
-        val vtables = t.classes map buildVTable mkString "\n"
-        val structDefinitions = t.classes map { classToStruct(scope, _) } mkString "\n\n"
+        val vtables = buildVTables(t.classes)
+        val structs = structDefinitions(scope, t.classes)
         val classMethods = t.classes map { c => apply(scope including c, c) } mkString "\n\n"
         val ourMain = apply(scope.withMain including t.main, t.main)
         val cMain = s"int main() {\n  u8 dummy;\n  gc_init(&dummy);\n  p0_main();\n}"
-        List(forwardDeclarations, vtables, structDefinitions, classMethods, ourMain, cMain) mkString "\n\n"
+        List(forwardDeclarations, vtables, structs, classMethods, ourMain, cMain) mkString "\n\n"
 
       case t: MainDecl =>
         val vars = t.vars map { apply(scope, _, 1) } mkString ";\n  "
         val varsStr = if (t.vars.isEmpty) "" else s"  $vars;\n"
         val exprs = t.exprs map { apply(scope, _, 1) } mkString ";\n  "
-        s"void __attribute__((noinline)) p0_main() {\n$varsStr  $exprs;\n}"
+        s"/*----- punkt0 main function -----*/\nvoid __attribute__((noinline)) p0_main() {\n$varsStr  $exprs;\n}"
 
       case t: ClassDecl =>
+        val className = t.id.value
         val parentInit = t.parent map { p => s"  p0_${p.value}__init(this);\n" } getOrElse ""
 
         val varInits = t.vars map { v => s"  ${apply(scope, v.id)} = ${apply(scope, v.expr)}"} mkString ";\n"
         val varInitsStr = if (t.vars.isEmpty) "" else s"$varInits;\n"
 
-        val linkVtable = s"  *((void***)this) = p0_${t.id.value}__vtable;\n"
-        val initFunction = s"void p0_${t.id.value}__init(struct p0_${t.id.value} *this) {\n$parentInit$linkVtable$varInitsStr}"
+        val linkVtable = s"  *((void***)this) = p0_${className}__vtable;\n"
+        val initFn = s"void p0_${className}__init(struct p0_${className} *this) {\n$parentInit$linkVtable$varInitsStr}"
 
-        val thisType = apply(scope, t.id)
-        val constructor = s"$thisType p0_${t.id.value}__new() {\n  $thisType this = gc_malloc(sizeof(struct p0_${t.id.value}));\n  p0_${t.id.value}__init(this);\n  return this;\n}"
+        val tpe = apply(scope, t.id)
+        val constructor = List(
+          s"$tpe p0_${className}__new() {",
+          s"  $tpe this = gc_malloc(sizeof(struct p0_${className}));",
+          s"  p0_${className}__init(this);",
+          s"  return this;",
+          s"}",
+        ).mkString("\n")
         val methods = t.methods map { m => apply(scope including m, m) } mkString "\n\n"
-        s"$initFunction\n\n$constructor\n\n$methods\n"
+        val methodsStr = if (t.methods.isEmpty) "" else s"\n\n$methods"
+        s"/*----- $className member functions -----*/\n$initFn\n\n$constructor$methodsStr"
 
       case t: MethodDecl =>
         // (overrides: Boolean, retType: TypeTree, id: Identifier, args: List[Formal], vars: List[VarDecl], exprs: List[ExprTree], retExpr: ExprTree)
         val retType = apply(scope, t.retType)
         val args = if (t.args.isEmpty) "" else s", ${t.args map { _.id.value } mkString ", "}"
-        val methodIndex = t.getSymbol.vtableIndex
-        val overrideCheck = s"if ((*(void***)this)[$methodIndex] != NULL)\n    return (($retType (*)())(*(void***)this)[$methodIndex])(this$args);"
+        val overrideCheck = List(
+          s"  void *_override_ptr = (*(void***)this)[${t.getSymbol.vtableIndex}];",
+          s"  if (_override_ptr != NULL)",
+          s"    return (($retType (*)())_override_ptr)(this$args);"
+        ).mkString("\n")
 
         val argList = t.args map { apply(scope, _) } mkString ", "
         val argListStr = if (argList.isEmpty) "" else s", $args"
@@ -150,7 +170,7 @@ object CBackend extends Phase[Program, Unit] {
         val exprs = t.exprs map { apply(scope, _, 1) } mkString ";\n  "
         val exprsStr = if (t.exprs.isEmpty) "" else s"  $exprs;\n"
         val maybeReturn = if (t.retType == UnitType()) "" else "return ";
-        s"${methodSignature(scope, t)} {\n  $overrideCheck\n$varsStr$exprsStr  gc_collect();\n  $maybeReturn${apply(scope, t.retExpr)};\n}"
+        s"${methodSignature(scope, t)} {\n$overrideCheck\n$varsStr$exprsStr  gc_collect();\n  $maybeReturn${apply(scope, t.retExpr)};\n}"
 
       case t: VarDecl  => s"${apply(scope, t.tpe)} ${t.id.value} = ${apply(scope, t.expr)}"
       case t: Formal   => s"${apply(scope, t.tpe)} ${apply(scope, t.id)}"
@@ -175,7 +195,6 @@ object CBackend extends Phase[Program, Unit] {
       case t: MethodCall =>
         val args = t.args map { apply(scope, _, i) } mkString ", "
         val argStr = if (t.args.isEmpty) "" else s", $args"
-        val methodsClass = t.meth.getSymbol.asInstanceOf[MethodSymbol].classSymbol.name;
         s"${apply(scope, t.meth)}(${apply(scope, t.obj)}$argStr)"
       case t: IntLit => s"${t.value}"
       case t: StringLit => s"${'"'}${t.value}${'"'}"
@@ -224,10 +243,10 @@ object CBackend extends Phase[Program, Unit] {
   }
 
   def run(prog: Program)(ctx: Context): Unit = {
-    val outDir = ctx.outDir map { _.getPath } getOrElse "."
-
     val gcFile = new java.io.File("./c-backend/gc.h")
     val gcFileStr = scala.io.Source.fromFile(gcFile).mkString
+
+    val outDir = ctx.outDir map { _.getPath } getOrElse "."
     val f = new java.io.File(outDir)
     if (!f.exists()) { f.mkdir() }
 
