@@ -58,12 +58,12 @@ object CBackend extends Phase[Program, Unit] {
     val overrideMap = classTree
       .flatMap(_.methods.values)
       .filter(_.overridden.isDefined)
-      .map(m => m.overridden.get.vtableIndex -> s"punkt0_${c.id.value}_${m.name}")
+      .map(m => m.overridden.get.vtableIndex -> s"p0_${c.id.value}_${m.name}")
       .toMap
 
     val numMethods = c.getSymbol.numParentMethods + c.methods.length
     val entries = (0 until numMethods).map(i => overrideMap.get(i).getOrElse("NULL"))
-    s"void *punkt0_${c.id.value}__vtable[] = { ${entries mkString ", "} };"
+    s"void *p0_${c.id.value}__vtable[] = { ${entries mkString ", "} };"
   }
 
   def toCCode(prog: Program): String = {
@@ -73,13 +73,13 @@ object CBackend extends Phase[Program, Unit] {
       val className = m.getSymbol.classSymbol.name
       val argList = m.args map { apply(scope, _) } mkString ", "
       val argListStr = if (argList.isEmpty) "" else s", $argList"
-      s"${apply(scope, m.retType)} punkt0_${className}_${m.id.value}(struct punkt0_$className *this$argListStr)"
+      s"${apply(scope, m.retType)} p0_${className}_${m.id.value}(struct p0_$className *this$argListStr)"
     }
 
     def forwardDecls(scope: VariableScope, p: Program): String = {
-      val classes = p.classes map { c => s"struct punkt0_${c.id.value};" } mkString "\n"
-      val initFunctions = p.classes map { c => s"void punkt0_${c.id.value}__init(struct punkt0_${c.id.value} *this);"} mkString "\n"
-      val newFunctions = p.classes map { c => s"${apply(scope, c.id)} punkt0_${c.id.value}__new();"} mkString "\n"
+      val classes = p.classes map { c => s"struct p0_${c.id.value};" } mkString "\n"
+      val initFunctions = p.classes map { c => s"void p0_${c.id.value}__init(struct p0_${c.id.value} *this);"} mkString "\n"
+      val newFunctions = p.classes map { c => s"${apply(scope, c.id)} p0_${c.id.value}__new();"} mkString "\n"
       val methods = p.classes map { cls =>
         val newScope = scope including cls
         cls.methods map { m => s"${methodSignature(newScope including m, m)};"} mkString "\n"
@@ -92,16 +92,16 @@ object CBackend extends Phase[Program, Unit] {
       case TBoolean => "int"
       case TInt => "int"
       case TString => "char *"
-      case TAnyRef(c) => s"struct punkt0_${c.name} *"
+      case TAnyRef(c) => s"struct p0_${c.name} *"
       case _ => throw new Error("Unreachable")
     }
 
     def classToStruct(scope: VariableScope, c: ClassDecl): String = {
-      val parent = c.parent map { p => s"  struct punkt0_${p.value} parent;\n" } getOrElse ""
+      val parent = c.parent map { p => s"  struct p0_${p.value} parent;\n" } getOrElse ""
       val vtablePtr = if (c.getSymbol.parent.isEmpty) "  void **vtable;\n" else ""
       val fields = c.vars map { v => s"  ${apply(scope, v.tpe)} ${v.id.value};" } mkString "\n"
       val fieldsStr = if (c.vars.isEmpty) "" else s"$fields\n"
-      s"struct punkt0_${c.id.value} {\n$parent$vtablePtr$fieldsStr};"
+      s"struct p0_${c.id.value} {\n$parent$vtablePtr$fieldsStr};"
     }
 
     def apply(scope: VariableScope, tree: Tree, i: Int = 0): String = tree match {
@@ -111,26 +111,26 @@ object CBackend extends Phase[Program, Unit] {
         val structDefinitions = t.classes map { classToStruct(scope, _) } mkString "\n\n"
         val classMethods = t.classes map { c => apply(scope including c, c) } mkString "\n\n"
         val ourMain = apply(scope.withMain including t.main, t.main)
-        val cMain = s"int main() {\n  u8 dummy;\n  gc_init(&dummy);\n  punkt0_main();\n}"
+        val cMain = s"int main() {\n  u8 dummy;\n  gc_init(&dummy);\n  p0_main();\n}"
         List(forwardDeclarations, vtables, structDefinitions, classMethods, ourMain, cMain) mkString "\n\n"
 
       case t: MainDecl =>
         val vars = t.vars map { apply(scope, _, 1) } mkString ";\n  "
         val varsStr = if (t.vars.isEmpty) "" else s"  $vars;\n"
         val exprs = t.exprs map { apply(scope, _, 1) } mkString ";\n  "
-        s"void __attribute__((noinline)) punkt0_main() {\n$varsStr  $exprs;\n}"
+        s"void __attribute__((noinline)) p0_main() {\n$varsStr  $exprs;\n}"
 
       case t: ClassDecl =>
-        val parentInit = t.parent map { p => s"  punkt0_${p.value}__init(this);\n" } getOrElse ""
+        val parentInit = t.parent map { p => s"  p0_${p.value}__init(this);\n" } getOrElse ""
 
         val varInits = t.vars map { v => s"  ${apply(scope, v.id)} = ${apply(scope, v.expr)}"} mkString ";\n"
         val varInitsStr = if (t.vars.isEmpty) "" else s"$varInits;\n"
 
-        val linkVtable = s"  *((void***)this) = punkt0_${t.id.value}__vtable;\n"
-        val initFunction = s"void punkt0_${t.id.value}__init(struct punkt0_${t.id.value} *this) {\n$parentInit$linkVtable$varInitsStr}"
+        val linkVtable = s"  *((void***)this) = p0_${t.id.value}__vtable;\n"
+        val initFunction = s"void p0_${t.id.value}__init(struct p0_${t.id.value} *this) {\n$parentInit$linkVtable$varInitsStr}"
 
         val thisType = apply(scope, t.id)
-        val constructor = s"$thisType punkt0_${t.id.value}__new() {\n  $thisType this = gc_malloc(sizeof(struct punkt0_${t.id.value}));\n  punkt0_${t.id.value}__init(this);\n  return this;\n}"
+        val constructor = s"$thisType p0_${t.id.value}__new() {\n  $thisType this = gc_malloc(sizeof(struct p0_${t.id.value}));\n  p0_${t.id.value}__init(this);\n  return this;\n}"
         val methods = t.methods map { m => apply(scope including m, m) } mkString "\n\n"
         s"$initFunction\n\n$constructor\n\n$methods\n"
 
@@ -183,11 +183,11 @@ object CBackend extends Phase[Program, Unit] {
       case t: False => "0"
       case t: This => "this"
       case t: Null => "NULL"
-      case t: New => s"punkt0_${t.tpe.value}__new()"
+      case t: New => s"p0_${t.tpe.value}__new()"
       case t: Not => s"!${apply(scope, t.expr, i)}"
       case t: Identifier => t.getSymbol match {
-        case c: ClassSymbol => s"struct punkt0_${t.value}*"
-        case m: MethodSymbol => s"punkt0_${m.classSymbol.name}_${t.value}"
+        case c: ClassSymbol => s"struct p0_${t.value}*"
+        case m: MethodSymbol => s"p0_${m.classSymbol.name}_${t.value}"
         case v: VariableSymbol => scope.lookupVar(t.value).get
       }
       case t: BooleanType => "int"
@@ -203,9 +203,9 @@ object CBackend extends Phase[Program, Unit] {
       case t: If => t.getType match {
         case TUnit => s"if (${apply(scope, t.expr, i)}) {\n  ${apply(scope, t.thn, i)};\n}${t.els.map(x => s" else {\n  ${apply(scope, x, i)};\n}").getOrElse("")}"
         case tpe => {
-          val thn = s"  punkt0_if_res = ${apply(scope, t.thn, i)};"
-          val els = s"  punkt0_if_res = ${apply(scope, t.els.get, i)};"
-          s"({\n  ${typeToStr(tpe)} punkt0_if_res;\n  if (${apply(scope, t.expr, i)}) {\n  $thn\n  } else {\n $els\n}\n  punkt0_if_res;\n})"
+          val thn = s"  p0_if_res = ${apply(scope, t.thn, i)};"
+          val els = s"  p0_if_res = ${apply(scope, t.els.get, i)};"
+          s"({\n  ${typeToStr(tpe)} p0_if_res;\n  if (${apply(scope, t.expr, i)}) {\n  $thn\n  } else {\n $els\n}\n  p0_if_res;\n})"
         }
       }
       case t: While => s"while (${apply(scope, t.cond, i)}) ${apply(scope, t.body, i)}"
