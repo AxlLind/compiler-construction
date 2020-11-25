@@ -78,8 +78,8 @@ object CBackend extends Phase[Program, Unit] {
 
     def forwardDecls(scope: VariableScope, p: Program): String = {
       val classes = p.classes map { c => s"struct punkt0_${c.id.value};" } mkString "\n"
-      val initFunctions = p.classes map { c => s"void punkt0_init_${c.id.value}(struct punkt0_${c.id.value} *this);"} mkString "\n"
-      val newFunctions = p.classes map { c => s"${apply(scope, c.id)} punkt0_new_${c.id.value}();"} mkString "\n"
+      val initFunctions = p.classes map { c => s"void punkt0_${c.id.value}__init(struct punkt0_${c.id.value} *this);"} mkString "\n"
+      val newFunctions = p.classes map { c => s"${apply(scope, c.id)} punkt0_${c.id.value}__new();"} mkString "\n"
       val methods = p.classes map { cls =>
         val newScope = scope including cls
         cls.methods map { m => s"${methodSignature(newScope including m, m)};"} mkString "\n"
@@ -121,16 +121,16 @@ object CBackend extends Phase[Program, Unit] {
         s"void __attribute__((noinline)) punkt0_main() {\n$varsStr  $exprs;\n}"
 
       case t: ClassDecl =>
-        val parentInit = t.parent map { p => s"  punkt0_init_${p.value}(this);\n" } getOrElse ""
+        val parentInit = t.parent map { p => s"  punkt0_${p.value}__init(this);\n" } getOrElse ""
 
         val varInits = t.vars map { v => s"  ${apply(scope, v.id)} = ${apply(scope, v.expr)}"} mkString ";\n"
         val varInitsStr = if (t.vars.isEmpty) "" else s"$varInits;\n"
 
         val linkVtable = s"  *((void***)this) = punkt0_${t.id.value}__vtable;\n"
-        val initFunction = s"void punkt0_init_${t.id.value}(struct punkt0_${t.id.value} *this) {\n$parentInit$linkVtable$varInitsStr}"
+        val initFunction = s"void punkt0_${t.id.value}__init(struct punkt0_${t.id.value} *this) {\n$parentInit$linkVtable$varInitsStr}"
 
         val thisType = apply(scope, t.id)
-        val constructor = s"$thisType punkt0_new_${t.id.value}() {\n  $thisType this = gc_malloc(sizeof(struct punkt0_${t.id.value}));\n  punkt0_init_${t.id.value}(this);\n  return this;\n}"
+        val constructor = s"$thisType punkt0_${t.id.value}__new() {\n  $thisType this = gc_malloc(sizeof(struct punkt0_${t.id.value}));\n  punkt0_${t.id.value}__init(this);\n  return this;\n}"
         val methods = t.methods map { m => apply(scope including m, m) } mkString "\n\n"
         s"$initFunction\n\n$constructor\n\n$methods\n"
 
@@ -183,7 +183,7 @@ object CBackend extends Phase[Program, Unit] {
       case t: False => "0"
       case t: This => "this"
       case t: Null => "NULL"
-      case t: New => s"punkt0_new_${t.tpe.value}()"
+      case t: New => s"punkt0_${t.tpe.value}__new()"
       case t: Not => s"!${apply(scope, t.expr, i)}"
       case t: Identifier => t.getSymbol match {
         case c: ClassSymbol => s"struct punkt0_${t.value}*"
