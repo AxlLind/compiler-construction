@@ -1,0 +1,98 @@
+class LinkedList {
+  var root: Node = null;
+
+  def add(v: Int): Unit = {
+    var curr: Node = null;
+
+    if (root == null) {
+      root = new Node();
+      root.setValue(v)
+    } else {
+      curr = root;
+      while (curr.hasNeighbour()) {
+        curr = curr.neighbour()
+      };
+
+      curr.setNeighbour(new Node());
+      curr.neighbour().setValue(v);
+      curr.neighbour().setPrev(curr)
+    }
+  }
+
+  def find(v: Int): Node = {
+    var curr: Node = null;
+    var ans: Node = null;
+
+    curr = root;
+    while (!(curr == null)) {
+      if (curr.hasValue(v))
+        ans = curr;
+      curr = curr.neighbour()
+    };
+    ans
+  }
+
+  def contains(v: Int): Boolean = { !(this.find(v) == null) }
+
+  def remove(v: Int): Unit = {
+    var found: Node = null;
+
+    found = this.find(v);
+    if (found == root) {
+      root = root.neighbour();
+      if (!(root == null))
+        root.setPrev(null)
+    } else {
+      if (!(found == null)) {
+        if (!(found.previous() == null))
+          found.previous().setNeighbour(found.neighbour());
+        if (!(found.neighbour() == null))
+          found.neighbour().setPrev(found.previous())
+      }
+    }
+  }
+}
+
+class Node {
+  var value: Int = 0;
+  var prev: Node = null;
+  var next: Node = null;
+
+  def hasValue(v: Int): Boolean = { value == v }
+  def setValue(newValue: Int): Unit = { value = newValue }
+
+  def setNeighbour(n: Node): Unit = { next = n }
+  def hasPrev(): Boolean = { !(prev == null) }
+  def previous(): Node = { prev }
+  def setPrev(n: Node): Unit = { prev = n }
+
+  def hasNeighbour(): Boolean = { !(next == null) }
+  def neighbour(): Node = { next }
+}
+
+object Main extends App {
+  var list: LinkedList = new LinkedList();
+  var i: Int = 0;
+
+  i = 100;
+  while (!(i == 0)) {
+    list.add(i);
+    i = i - 1
+  };
+
+  i = 100;
+  while (!(i == 0)) {
+    if (!list.contains(i))
+      println("Broken implementation (add): " + i);
+    i = i - 1
+  };
+
+  i = 100;
+  while (!(i == 0)) {
+    list.remove(i);
+    if (list.contains(i))
+      println("Broken implementation (remove): " + i);
+    i = i - 1
+  };
+  println("Everything works (i think)")
+}
