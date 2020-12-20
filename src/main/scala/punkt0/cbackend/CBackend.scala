@@ -7,6 +7,10 @@ import analyzer.Symbols._
 import analyzer.Types._
 
 object CBackend extends Phase[Program, Unit] {
+  // A helper class to keep track of where to find references to variables.
+  // These can either be a local variable, in which are easy to reference,
+  // or a class field, in which we need to know at which parent the field
+  // exists so we can cast it to a pointer of that type.
   case class VariableScope(
     c: ClassSymbol = null,
     m: Option[MethodSymbol] = None,
@@ -14,8 +18,8 @@ object CBackend extends Phase[Program, Unit] {
   ) {
     def getClassVar(name: String, cls: ClassSymbol): Option[String] = {
       if (cls.members.get(name).isDefined)
-        return Some(name)
-      cls.parent flatMap { getClassVar(name, _) } map { s => s"parent.$s" }
+        return Some(cls.name)
+      cls.parent flatMap { getClassVar(name, _) }
     }
 
     def lookupVar(name: String): Option[String] = {
@@ -26,7 +30,7 @@ object CBackend extends Phase[Program, Unit] {
         if (maybeMethodVar.isDefined)
           return Some(name)
       }
-      getClassVar(name, c) map { s => s"this->$s"}
+      getClassVar(name, c) map { s => s"((struct p0_$s*)this)->$name" }
     }
 
     def including[S <: Symbolic[_ <: Symbol]](s: S): VariableScope = s.getSymbol match {
@@ -37,6 +41,9 @@ object CBackend extends Phase[Program, Unit] {
     def withMain = copy(isMain = true)
   }
 
+  // Each method has a unique index in the class' vtable, which
+  // is used when looking up if the method in question has
+  // been overwritten by a child class.
   def computeVTableIndexes(c: ClassDecl) = {
     var parent = c.getSymbol.parent
     var numParentMethods = 0
@@ -48,6 +55,11 @@ object CBackend extends Phase[Program, Unit] {
     c.methods.zipWithIndex foreach { case (m, i) => m.getSymbol.vtableIndex = numParentMethods + i}
   }
 
+  // Build the virtual method tables for all classes. From these you can tell at
+  // runtime if the method has been overwritten, has if so call that method instead.
+  // Essentially this is a just of function pointers stored as a void* array,
+  // and cast to a function pointer of the correct type at runtime.
+  // If the entry in the vtable is NULL then the method has not been overwritten.
   def buildVTables(classes: List[ClassDecl]): String = {
     def buildVTable(c: ClassDecl): String = {
       var classTree = List(c.getSymbol)
@@ -79,6 +91,8 @@ object CBackend extends Phase[Program, Unit] {
       s"${apply(scope, m.retType)} p0_${className}_${m.id.value}(struct p0_$className *this$argListStr)"
     }
 
+    // Figuring out which functions will reference which and which
+    // classes is difficult, so just forward declare everything.
     def forwardDecls(scope: VariableScope, p: Program): String = {
       val classes = p.classes map { c => s"struct p0_${c.id.value};" } mkString "\n"
       val initFunctions = p.classes map { c => s"void p0_${c.id.value}__init(struct p0_${c.id.value} *this);"} mkString "\n"
@@ -97,18 +111,21 @@ object CBackend extends Phase[Program, Unit] {
     def typeToStr(tpe: Type): String = tpe match {
       case TBoolean => "int"
       case TInt => "int"
-      case TString => "char *"
-      case TAnyRef(c) => s"struct p0_${c.name} *"
+      case TString => "char*"
+      case TAnyRef(c) => s"struct p0_${c.name}*"
       case _ => throw new Error("Unreachable")
     }
 
+    // Definitions of all the classes in the program as structs. If the class
+    // does not inherit from anything it needs to store a pointer to the virtual
+    // table in it's struct definition, otherwise it needs to keep a parent type.
     def structDefinitions(scope: VariableScope, classes: List[ClassDecl]): String = {
       def classToStruct(c: ClassDecl): String = {
         val parent = c.parent map { p => s"  struct p0_${p.value} parent;\n" } getOrElse ""
         val vtablePtr = if (c.getSymbol.parent.isEmpty) "  void **vtable;\n" else ""
         val fields = c.vars map { v => s"  ${apply(scope, v.tpe)} ${v.id.value};" } mkString "\n"
         val fieldsStr = if (c.vars.isEmpty) "" else s"$fields\n"
-        s"struct p0_${c.id.value} {\n$parent$vtablePtr$fieldsStr};"
+        s"struct p0_${c.id.value} {\n$vtablePtr$parent$fieldsStr};"
       }
       s"/*----- struct definitions -----*/\n${classes.map(classToStruct).mkString("\n")}"
     }
@@ -119,10 +136,18 @@ object CBackend extends Phase[Program, Unit] {
         val vtables = buildVTables(t.classes)
         val structs = structDefinitions(scope, t.classes)
         val classMethods = t.classes map { c => apply(scope including c, c) } mkString "\n\n"
-        val ourMain = apply(scope.withMain including t.main, t.main)
-        val cMain = s"int main() {\n  u8 dummy;\n  gc_init(&dummy);\n  p0_main();\n}"
-        List(forwardDeclarations, vtables, structs, classMethods, ourMain, cMain) mkString "\n\n"
+        val p0Main = apply(scope.withMain including t.main, t.main)
+        val cMain = List(
+          s"int main() {",
+          s"  u8 dummy;",
+          s"  gc_init(&dummy);",
+          s"  p0_main();",
+          s"}",
+        ).mkString("\n")
+        List(forwardDeclarations, vtables, structs, classMethods, p0Main, cMain) mkString "\n\n"
 
+      // mark as noinline to force a stack frame to be allocated, this
+      // means the stack-size will always be non-zero, which helps the GC.
       case t: MainDecl =>
         val vars = t.vars map { apply(scope, _, 1) } mkString ";\n  "
         val varsStr = if (t.vars.isEmpty) "" else s"  $vars;\n"
@@ -136,6 +161,7 @@ object CBackend extends Phase[Program, Unit] {
         val varInits = t.vars map { v => s"  ${apply(scope, v.id)} = ${apply(scope, v.expr)}"} mkString ";\n"
         val varInitsStr = if (t.vars.isEmpty) "" else s"$varInits;\n"
 
+        // cast this to a vtable pointer and assign it
         val linkVtable = s"  *((void***)this) = p0_${className}__vtable;\n"
         val initFn = s"void p0_${className}__init(struct p0_${className} *this) {\n$parentInit$linkVtable$varInitsStr}"
 
@@ -152,9 +178,10 @@ object CBackend extends Phase[Program, Unit] {
         s"/*----- $className member functions -----*/\n$initFn\n\n$constructor$methodsStr"
 
       case t: MethodDecl =>
-        // (overrides: Boolean, retType: TypeTree, id: Identifier, args: List[Formal], vars: List[VarDecl], exprs: List[ExprTree], retExpr: ExprTree)
         val retType = apply(scope, t.retType)
         val args = if (t.args.isEmpty) "" else s", ${t.args map { _.id.value } mkString ", "}"
+
+        // check if the method has been overwritten, and if so use that version instead
         val overrideCheck = List(
           s"  void *_override_ptr = (*(void***)this)[${t.getSymbol.vtableIndex}];",
           s"  if (_override_ptr != NULL)",
@@ -182,6 +209,8 @@ object CBackend extends Phase[Program, Unit] {
       case t: LessThan => s"(${apply(scope, t.lhs)} < ${apply(scope, t.rhs)})"
       case t: Equals   => s"(${apply(scope, t.lhs)} == ${apply(scope, t.rhs)})"
 
+      // Use the str addition functions for the overloaded plus operator.
+      // These are defined in the gc.h file which is always included.
       case t: Plus =>
         val lhs = apply(scope, t.lhs);
         val rhs = apply(scope, t.rhs);
@@ -211,7 +240,7 @@ object CBackend extends Phase[Program, Unit] {
       }
       case t: BooleanType => "int"
       case t: IntType => "int"
-      case t: StringType => "char *"
+      case t: StringType => "char*"
       case t: UnitType => "void"
       case t: Block =>
         val block = s"{\n${t.exprs.map(indented(scope, _, i+1)).mkString(";\n")};\n${"  " * i}}"
@@ -252,7 +281,8 @@ object CBackend extends Phase[Program, Unit] {
 
     prog.classes foreach computeVTableIndexes
 
-    val pw = new PrintWriter(new File(s"${outDir}/out.c"))
+    val outName = ctx.file.get.getName
+    val pw = new PrintWriter(new File(s"${outDir}/${outName}.c"))
     pw.write(s"$gcFileStr\n${toCCode(prog)}")
     pw.close
   }
