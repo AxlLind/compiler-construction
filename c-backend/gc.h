@@ -114,10 +114,7 @@ void gc_mark_from_registers(void) {
   gc_mark_range((u8*)registers, sizeof(registers));
 }
 
-// Marked as 'noinline' to force a stack-frame to be allocated.
-// This means stack_size will always be positive even when collecting from main,
-// When compiling with -O2/3 this becomes an issue since this gets inlined.
-void __attribute__((noinline)) gc_collect(void) {
+void gc_collect(void) {
   u8 dummy;
   u32 stack_size = gc.top_stack_ptr - (u64)&dummy;
   memset(gc.free_map, 0, FREE_MAP_SIZE); // remove all markings
