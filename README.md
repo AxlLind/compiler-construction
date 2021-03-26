@@ -1,5 +1,5 @@
 ## Compiler Construction
-This repo contains my solutions to all labs in the course [Compiler Construction](https://www.kth.se/student/kurser/kurs/DD2488?l=en) at KTH. The course involved six labs in which you build a complete compiler for a simple language. This included all steps of a normal compiler:
+This repo contains the compiler I created in the course [Compiler Construction](https://www.kth.se/student/kurser/kurs/DD2488?l=en) at KTH, completely written in Scala. The course involved you creating a complete compiler for a simple language. This included all steps of a classic compiler structure:
 - Lexer
 - Parser
 - Name Analysis
