@@ -272,7 +272,7 @@ object CBackend extends Phase[Program, Unit] {
   }
 
   def run(prog: Program)(ctx: Context): Unit = {
-    val gcFile = new java.io.File("./c-backend/gc.h")
+    val gcFile = new java.io.File("./gc.h")
     val gcFileStr = scala.io.Source.fromFile(gcFile).mkString
 
     val outDir = ctx.outDir map { _.getPath } getOrElse "."

@@ -9,7 +9,7 @@ This repo contains the compiler I created in the course [Compiler Construction](
 While simple, this is a real, somewhat functioning language targeting the JVM. See the last paragraph for an example program!
 
 ## Individual project - A garbage collected C-backend from scratch
-The course concluded with an individual project where you implemented a non-trivial extension to the compiler. You were free to propose any extension you wanted (see [proposal](./project-proposal.md)). For my project I implemented an alternative backend to the compiler. This backend outputs C code instead of JVM bytecode. Due to the language supporting inheritance and garbage collection this was quite complicated. I had to implement inhertiance from scratch in C and write a simple [garbage collector](./c-backend/gc.h) in pure C.
+The course concluded with an individual project where you implemented a non-trivial extension to the compiler. You were free to propose any extension you wanted (see [proposal](./project-proposal.md)). For my project I implemented an alternative backend to the compiler. This backend outputs C code instead of JVM bytecode. Due to the language supporting inheritance and garbage collection this was quite complicated. I had to implement inhertiance from scratch in C and write a simple garbage collector in pure C (see [gc.h](./gc.h)).
 
 Please see my full [**report here**](./final-report.pdf), and the corresponding [LaTeX document here](./report).
 
