@@ -1,0 +1,12 @@
+\section{Introduction}
+% Briefly say what problem you want to solve with your extension.
+% This section should convince us that you have a clear picture of the general architecture of your compiler and that you understand how your extension fits in it.
+I chose to implement one of the suggested extensions, a C-backend as an alternative to the JVM backend implemented in lab 6. Since the \texttt{punkt0} relies on the garbage collected environment of the JVM and has features not present in plain C, such as classes and inheritance, this is not a trivial thing to implement. I also decided to implement the garbage collection myself, as that seemed like a fun task, instead of relying on an external library.
+
+To implement this, an optional flag (\texttt{--cbackend}) was added to the compiler. If supplied, the compiler will output a C file instead of the JVM class-files. This file can then be compiled by a C compiler to get a native binary, equivalent to the \texttt{punkt0} program. There are several reasons why you might want to do this:
+\begin{itemize}
+    \item Your compiler now supports any target that the C compiler supports, which for GCC is more or less any architecture you can think of!
+    \item You do not have to implement sophisticated machine-code optimization and can instead rely on the decades of work done to implement that in the C compiler.
+    \item Outputting C code is arguably a lot easier to implement than a machine-code backend. Often there is an easier mapping from your language to C since it is at a much higher level. This can get you started thinking about and implementing more high-level features of your compiler.
+\end{itemize}
+This was implemented in two separate parts. One was a stand-alone garbage collector written from scratch in C, and the other was a new phase of the \texttt{punkt0} compiler. The new phase has the same interface as the \texttt{CodeGeneration.scala} phase that outputs JVM bytecode and it operates a lot like the pretty-printer we implemented for lab 3. More on this in section 3.

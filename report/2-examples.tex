@@ -1,0 +1,122 @@
+\section{Examples}
+% Give code examples where your extension is useful, and describe how they work with it. Make sure you include examples where the most intricate features of your extension are used, so that we have an immediate understanding of what the challenges are. This section should convince us that you understand how your extension can be useful and that you thought about the corner cases.
+This project introduces no new language feature changes that could easily be shown of here. Instead, I will show an example of what the translation to C code would look like. Consider the following \texttt{punkt0} code which uses some "advanced" features like if-expressions which are not present in C. More on this in section 3, but it requires some relatively complex translation.
+
+\begin{lstlisting}
+object Main extends App {
+  var x: Int = 10;
+  var y: Int = 50;
+  var z: Int = 0;
+
+  z = if (x < y) y else x;
+  println(z)
+}
+\end{lstlisting}
+This gets translated into the following C code:
+
+\begin{lstlisting}
+void __attribute__((noinline)) p0_main() {
+  int x = 10;
+  int y = 50;
+  int z = 0;
+  z = ({
+    int p0_if_res;
+    if ((x < y)) {
+      p0_if_res = y;
+    } else {
+      p0_if_res = x;
+    }
+    p0_if_res;
+  });
+  printf("%d\n", z);
+}
+
+int main() {
+  u8 dummy;
+  gc_init(&dummy);
+  p0_main();
+}
+\end{lstlisting}
+Another complexity (again more on the details in section 3) is handling inheritance. The following example shows how inheritance is implemented in the C translation, using pointer casting and virtual method tables (vtables). Consider the following trivial \texttt{punkt0} example which shows of inheritance and overridden functions:
+\begin{lstlisting}
+class A {
+  var x: Int = 42;
+  def fn(): Int = {x}
+}
+
+class B extends A {
+  override def fn(): Int = {1337}
+}
+
+object Main extends App {
+  var a: A = new A();
+  var b: A = new B();
+  println(a.fn());
+  println(b.fn())
+}
+\end{lstlisting}
+What follows is the translated code of the example above. It shows how much code is actually needed to get inheritance working. In C there is no such concept, so dynamic dispatch, the ability to dynamically type variables at runtime, has to be implemented from scratch. Note that some details have been removed for brevity. I would recommend the reader to compile the \texttt{QuickSort.p0} in order to see a more complex example of inheritance and function overriding in use.
+\begin{lstlisting}
+/*----- vtables -----*/
+void *p0_A__vtable[] = { NULL };
+void *p0_B__vtable[] = { p0_B_fn, NULL };
+
+/*----- struct definitions -----*/
+struct p0_A {
+  void **vtable;
+  int x;
+};
+struct p0_B {
+  struct p0_A parent;
+};
+
+/*----- A member functions -----*/
+void p0_A__init(struct p0_A *this) {
+  *((void***)this) = p0_A__vtable;
+  ((struct p0_A*)this)->x = 42;
+}
+
+
+struct p0_A* p0_A__new() {
+  struct p0_A* this = gc_malloc(sizeof(struct p0_A));
+  p0_A__init(this);
+  return this;
+}
+
+int p0_A_fn(struct p0_A *this) {
+  void *_override_ptr = (*(void***)this)[0];
+  if (_override_ptr != NULL)
+    return ((int (*)())_override_ptr)(this);
+  gc_collect();
+  return ((struct p0_A*)this)->x;
+}
+
+/*----- B member functions -----*/
+void p0_B__init(struct p0_B *this) {
+  p0_A__init(this);
+  *((void***)this) = p0_B__vtable;
+}
+
+struct p0_B* p0_B__new() {
+  struct p0_B* this = gc_malloc(sizeof(struct p0_B));
+  p0_B__init(this);
+  return this;
+}
+
+int p0_B_fn(struct p0_B *this) {
+  void *_override_ptr = (*(void***)this)[1];
+  if (_override_ptr != NULL)
+    return ((int (*)())_override_ptr)(this);
+  gc_collect();
+  return 1337;
+}
+
+/*----- punkt0 main function -----*/
+void __attribute__((noinline)) p0_main() {
+  struct p0_A* a = p0_A__new();
+  struct p0_A* b = p0_B__new();
+  printf("%d\n", p0_A_fn(a));
+  printf("%d\n", p0_A_fn(b));
+}
+\end{lstlisting}
+Note in particular the vtable of class B. At index zero we see the function pointer to \texttt{p0\_b\_fn}. In the function \texttt{p0\_A\_fn}, which is A's version of the \texttt{fn} function, you can see a check to look in the vtable if this entry is non-null and thus the function has been overridden. If that's the case the value is cast to the appropriate function pointer and called instead of A's version. The B instance has it's vtable pointer set to this vtable, in \texttt{p0\_B\_\_init}. This means that, while the C type is of \texttt{struct A}, the virtual table tells the program that it should actually use the B version of the \texttt{fn} function. This program correctly prints out \texttt{42} and then \texttt{1337}.
