@@ -25,16 +25,12 @@ class FizzBuzz {
     while(i < to) {
       if (this.divides(i,15)) {
         println("FizzBuzz")
+      } else if (this.divides(i,5)) {
+        println("Fizz")
+      } else if (this.divides(i,3)) {
+        println("Buzz")
       } else {
-        if (this.divides(i,5)) {
-          println("Fizz")
-        } else {
-          if (this.divides(i,3)) {
-            println("Buzz")
-          } else {
-            println(i)
-          }
-        }
+        println(i)
       };
       i = i + 1
     };
